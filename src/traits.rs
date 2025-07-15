@@ -118,6 +118,34 @@ impl<T: ApproxOrd> ApproxOrd for &T {
     }
 }
 
+pub trait ApproxSign: ApproxEq {
+    fn approx_sign(&self, prec: Precision) -> Sign;
+}
+impl ApproxSign for f32 {
+    fn approx_sign(&self, prec: Precision) -> Sign {
+        (*self as f64).approx_sign(prec)
+    }
+}
+impl ApproxSign for f64 {
+    fn approx_sign(&self, prec: Precision) -> Sign {
+        if self.approx_eq_zero(prec) {
+            Sign::Zero
+        } else if self.is_sign_positive() {
+            Sign::Positive
+        } else {
+            Sign::Negative
+        }
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Sign {
+    Negative = -1,
+    #[default]
+    Zero = 0,
+    Positive = 1,
+}
+
 /// Trait for values that contain `f32` or `f64`.
 ///
 /// This is used for interning all floats in a structure, and may be used for

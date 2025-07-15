@@ -7,13 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0]
+
+### Added
+
+- `prelude` module
+- `ApproxSign` trait
+
 ## [1.0.0]
 
 ### Added
 
 - `Precision`
-- Traits `ApproxEq`, `ApproxEqZero`, `ApproxOrd`, `ApproxHash`, and `ApproxHasher`
-- Data structures `FloatInterner` and `ApproxHashMap`
+- `ApproxEq`, `ApproxEqZero`, `ApproxOrd`, `ApproxHash`, and `ApproxHasher` traits
+- `FloatInterner` and `ApproxHashMap` data structures
 - Entry API for `ApproxHashMap`
 
 [1.0.0]: https://github.com/HactarCE/approx_collections/releases/tag/v1.0.0
