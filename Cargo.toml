@@ -7,6 +7,7 @@ edition = "2024"
 repository = "https://github.com/HactarCE/approx_collections/"
 rust-version = "1.88.0"
 keywords = ["math", "equality", "approximate", "float", "comparison"]
+license = "MIT OR Apache-2.0"
 
 [workspace.lints.clippy]
 cargo = { level = "warn", priority = -1 }
