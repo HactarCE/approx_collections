@@ -1,18 +1,14 @@
 //! Hash map that works for [`ApproxHash`]able values.
 
-use std::{
-    collections::{HashMap, hash_map},
-    fmt,
-    hash::{BuildHasher, BuildHasherDefault, Hasher, RandomState},
-};
+use std::collections::{HashMap, hash_map};
+use std::fmt;
+use std::hash::{BuildHasher, BuildHasherDefault, Hasher, RandomState};
 
 use smallvec::{SmallVec, smallvec};
 
-use crate::{
-    ApproxEq, Precision,
-    hash::{ApproxHash, ApproxHasher, InterningApproxHasher},
-    intern::FloatInterner,
-};
+use crate::hash::{ApproxHash, ApproxHasher, InterningApproxHasher};
+use crate::intern::FloatInterner;
+use crate::{ApproxEq, Precision};
 
 #[derive(Debug, Default, Copy, Clone)]
 struct TrivialHasher(u64);

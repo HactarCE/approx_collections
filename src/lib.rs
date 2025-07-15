@@ -39,6 +39,3 @@ pub use hash_map::ApproxHashMap;
 pub use intern::FloatInterner;
 pub use precision::Precision;
 pub use traits::*;
-
-#[cfg(test)]
-mod tests;

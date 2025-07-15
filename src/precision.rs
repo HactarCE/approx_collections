@@ -316,9 +316,9 @@ fn f64_exponent(f: f64) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use proptest::prelude::*;
+
+    use super::*;
 
     #[cfg(test)]
     impl Arbitrary for Precision {
