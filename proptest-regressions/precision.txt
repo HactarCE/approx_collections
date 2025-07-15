@@ -1,0 +1,20 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 56439fa69e9dc144fe0606eed782626714dc6678e25acab6e154a7ec06070b84 # shrinks to TestBucketingArgs = TestBucketingArgs { field0: 0.0 }
+cc 00ce86859cfbdf9d11fe21e5cd188a9d564764e832f2829b910ea55b46ec4064 # shrinks to TestBucketingArgs = TestBucketingArgs { field0: 7.7352232722273e305 }
+cc d6d7b3bb5edb2f42db482523c7b0f3eaa7953f6e7aa1a29a3be0a0ef5d54882a # shrinks to TestBucketingArgs = TestBucketingArgs { field0: -2.0424882259685924e239 }
+cc f080b6b8338cd191f198e1f222919ee22597cf74dc5beefd5375df5b2ce44961 # shrinks to TestEveryFloatGetsItsOwnBucketArgs = TestEveryFloatGetsItsOwnBucketArgs { field0: 0.0 }
+cc d5fdfa539599ef25e2c84f0182c337d0f61970bdc5464d5c8e6879e0b9790e3b # shrinks to TestEveryFloatGetsItsOwnBucketArgs = TestEveryFloatGetsItsOwnBucketArgs { field0: -0.0 }
+cc a31cd24a6c8e44c07849d7abc2e7082cc0d8d21790a0d425051f9c03cc45d373 # shrinks to TestEveryFloatGetsItsOwnBucketArgs = TestEveryFloatGetsItsOwnBucketArgs { field0: -1.624295305270055e-309 }
+cc 28e7200a5a3f3d1db68dcfc3be72c3a5789af5598826d1bd4b550dbbd6190969 # shrinks to TestBucketsArgs = TestBucketsArgs { field0: -0.6552476826578119 }
+cc edd72dd6e9d24ec2ab292c36aa8626bec817f3bd149538ed87905da5f0edeb77 # shrinks to ProptestEveryNormalFloatGetsItsOwnBucketProptestArgs = ProptestEveryNormalFloatGetsItsOwnBucketProptestArgs { field0: 1.1223136229790329e-299 }
+cc 555f2d28be2314dff48dac3687b09025ccead4d0d4afa66b56a7381989482e88 # shrinks to ProptestBucketsArgs = ProptestBucketsArgs { field0: 0.0981082002448496 }
+cc 01403e8b899a77efa6ff46ec347d08f85bb9dbd6637b738819ff7e46c89cb3d7 # shrinks to ProptestEveryFloatGetsItsOwnBucketProptestArgs = ProptestEveryFloatGetsItsOwnBucketProptestArgs { field0: 1.8585855904001754e-293 }
+cc b879aa166c706c9c406a12aa2811ea9f26749323f796166bc0720f87a494d7bc # shrinks to ProptestEqZeroArgs = ProptestEqZeroArgs { field0: -3.161974509045425e186, field1: Precision { min_exponent: 1642, mantissa_bits: 0 } }
+cc 5a16a6176e83b59c82526d163c8a5fd6fff117c8bdc31e064af73602a1641d39 # shrinks to ProptestSignSymmetryArgs = ProptestSignSymmetryArgs { field0: 0.0, field1: Precision { min_exponent: 0, mantissa_bits: 0 } }
+cc 29511d685aa3c9827f7faaa19a82a0e012eb4526d543b9250d4ffc1be5f69edf # shrinks to ProptestEveryFloatGetsItsOwnBucketProptestArgs = ProptestEveryFloatGetsItsOwnBucketProptestArgs { field0: 8.686614786422335e-293 }
+cc 3d644768231c2a402928a3da967520a9c16e3c11144ea1ab50249aa221be28d5 # shrinks to ProptestSymmetricEqArgs = ProptestSymmetricEqArgs { field0: 2.857375866290196e-308, field1: 0.0, field2: Precision { min_exponent: 0, mantissa_bits: 0 } }
