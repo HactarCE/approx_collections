@@ -2,7 +2,7 @@
 
 use std::cmp::Ordering;
 
-use crate::{ApproxEq, ApproxEqZero, ApproxOrd, ApproxSign, Sign};
+use crate::{ApproxCmpZero, ApproxEq, ApproxEqZero, ApproxOrd};
 
 /// Sign bit
 const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
@@ -309,12 +309,12 @@ impl Precision {
         a.approx_eq_zero(self)
     }
     /// Returns whether `a` is approximately positive (greater than zero).
-    pub fn is_pos<T: ApproxSign>(self, a: T) -> bool {
-        a.approx_sign(self) == Sign::Positive
+    pub fn is_pos<T: ApproxCmpZero>(self, a: T) -> bool {
+        a.approx_cmp_zero(self) == Ordering::Greater
     }
     /// Returns whether `a` is approximately negative (less than zero).
-    pub fn is_neg<T: ApproxSign>(self, a: T) -> bool {
-        a.approx_sign(self) == Sign::Negative
+    pub fn is_neg<T: ApproxCmpZero>(self, a: T) -> bool {
+        a.approx_cmp_zero(self) == Ordering::Less
     }
 }
 

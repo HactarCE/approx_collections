@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed `ApproxSign` to `ApproxCmpZero`
+  - Renamed `approx_sign()` to `approx_cmp_zero()` and changed it to return `std::cmp::Ordering` instead of `Sign`
+
+### Removed
+
+- Removed `Sign` enum
+
 ## [2.0.0]
 
 ### Added

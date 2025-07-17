@@ -118,32 +118,24 @@ impl<T: ApproxOrd> ApproxOrd for &T {
     }
 }
 
-pub trait ApproxSign: ApproxEq {
-    fn approx_sign(&self, prec: Precision) -> Sign;
+pub trait ApproxCmpZero: ApproxEqZero {
+    fn approx_cmp_zero(&self, prec: Precision) -> Ordering;
 }
-impl ApproxSign for f32 {
-    fn approx_sign(&self, prec: Precision) -> Sign {
-        (*self as f64).approx_sign(prec)
+impl ApproxCmpZero for f32 {
+    fn approx_cmp_zero(&self, prec: Precision) -> Ordering {
+        (*self as f64).approx_cmp_zero(prec)
     }
 }
-impl ApproxSign for f64 {
-    fn approx_sign(&self, prec: Precision) -> Sign {
+impl ApproxCmpZero for f64 {
+    fn approx_cmp_zero(&self, prec: Precision) -> Ordering {
         if self.approx_eq_zero(prec) {
-            Sign::Zero
+            Ordering::Equal
         } else if self.is_sign_positive() {
-            Sign::Positive
+            Ordering::Greater
         } else {
-            Sign::Negative
+            Ordering::Less
         }
     }
-}
-
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Sign {
-    Negative = -1,
-    #[default]
-    Zero = 0,
-    Positive = 1,
 }
 
 /// Trait for modifying all floats in an object.
