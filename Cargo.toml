@@ -9,6 +9,11 @@ rust-version = "1.88.0"
 keywords = ["math", "equality", "approximate", "float", "comparison"]
 license = "MIT OR Apache-2.0"
 
+[workspace.lints.rust]
+missing_docs = "warn"
+rust_2018_idioms = "warn"
+unused_crate_dependencies = "warn"
+
 [workspace.lints.clippy]
 cargo = { level = "warn", priority = -1 }
 correctness = { level = "deny", priority = -1 }
