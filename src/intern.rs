@@ -1,6 +1,6 @@
 //! Interner that canonicalizes similar floats.
 
-use crate::{Precision, VisitFloats};
+use crate::{ForEachFloat, Precision};
 
 #[cfg(feature = "rustc-hash")]
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
@@ -39,16 +39,13 @@ impl FloatInterner {
     /// Canonicalizes all floats in `value`, returning a mutated copy of
     /// `value`.
     #[must_use = "canonicalize() returns a mutated copy"]
-    pub fn canonicalize<V: VisitFloats>(&mut self, mut value: V) -> V {
+    pub fn canonicalize<V: ForEachFloat>(&mut self, mut value: V) -> V {
         self.canonicalize_in_place(&mut value);
         value
     }
     /// Canonicalizes all floats in `value`.
-    pub fn canonicalize_in_place<V: VisitFloats>(&mut self, value: &mut V) {
-        value.visit_floats_mut(|x| {
-            let (f, _) = self.insert(*x);
-            *x = f;
-        });
+    pub fn canonicalize_in_place<V: ForEachFloat>(&mut self, value: &mut V) {
+        value.for_each_float(&mut |x| *x = self.insert(*x).0);
     }
 
     /// Searches for an existing hash value for a float that is approximately

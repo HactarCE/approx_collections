@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Precision::is_pos()`
 - `Precision::is_neg()`
 
+### Changed
+
+- Renamed `VisitFloats` to `ForEachFloat`
+  - Removed `visit_floats()`
+  - Renamed `visit_floats_mut()` to `for_each_float()`
+
 ## [1.1.0]
 
 ### Added

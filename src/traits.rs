@@ -146,52 +146,32 @@ pub enum Sign {
     Positive = 1,
 }
 
-/// Trait for values that contain `f32` or `f64`.
+/// Trait for modifying all floats in an object.
 ///
-/// This is used for interning all floats in a structure, and may be used for
-/// implementing [`ApproxEq`], [`ApproxEqZero`], and [`ApproxOrd`].
-pub trait VisitFloats {
-    /// Calls `f` on all float values in `self`.
-    fn visit_floats(&self, f: impl FnMut(&f64));
-    /// Calls `f` on mutable references to all float values in `self`.
-    fn visit_floats_mut(&mut self, f: impl FnMut(&mut f64));
+/// This is used for float interning via [`crate::FloatInterner`].
+pub trait ForEachFloat {
+    /// Calls `f` on every float value in the object.
+    fn for_each_float(&mut self, f: &mut impl FnMut(&mut f64));
 }
-impl VisitFloats for f64 {
-    fn visit_floats(&self, mut f: impl FnMut(&f64)) {
-        f(self)
-    }
-
-    fn visit_floats_mut(&mut self, mut f: impl FnMut(&mut f64)) {
+impl ForEachFloat for f64 {
+    fn for_each_float(&mut self, f: &mut impl FnMut(&mut f64)) {
         f(self)
     }
 }
-impl VisitFloats for f32 {
-    fn visit_floats(&self, mut f: impl FnMut(&f64)) {
-        let x = *self as f64;
-        f(&x);
-    }
-
-    fn visit_floats_mut(&mut self, mut f: impl FnMut(&mut f64)) {
+impl ForEachFloat for f32 {
+    fn for_each_float(&mut self, f: &mut impl FnMut(&mut f64)) {
         let mut x = *self as f64;
         f(&mut x);
         *self = x as f32;
     }
 }
-impl<T: VisitFloats> VisitFloats for [T] {
-    fn visit_floats(&self, mut f: impl FnMut(&f64)) {
-        self.iter().for_each(|x| x.visit_floats(&mut f));
-    }
-
-    fn visit_floats_mut(&mut self, mut f: impl FnMut(&mut f64)) {
-        self.iter_mut().for_each(|x| x.visit_floats_mut(&mut f));
+impl<T: ForEachFloat> ForEachFloat for [T] {
+    fn for_each_float(&mut self, f: &mut impl FnMut(&mut f64)) {
+        self.into_iter().for_each(|x| x.for_each_float(f));
     }
 }
-impl<T: VisitFloats, const N: usize> VisitFloats for [T; N] {
-    fn visit_floats(&self, mut f: impl FnMut(&f64)) {
-        self.iter().for_each(|x| x.visit_floats(&mut f));
-    }
-
-    fn visit_floats_mut(&mut self, mut f: impl FnMut(&mut f64)) {
-        self.iter_mut().for_each(|x| x.visit_floats_mut(&mut f));
+impl<T: ForEachFloat, const N: usize> ForEachFloat for [T; N] {
+    fn for_each_float(&mut self, f: &mut impl FnMut(&mut f64)) {
+        self.into_iter().for_each(|x| x.for_each_float(f));
     }
 }
