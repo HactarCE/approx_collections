@@ -2,8 +2,8 @@
 //!
 //! [`Precision`] is the basic struct used by everything in this crate.
 //!
-//! [`FloatInterner`] is used for canonicalizing floats to reduce accumulated
-//! numerical error and allow direct comparison using [`PartialEq`].
+//! [`FloatPool`] is used for interning floats to reduce accumulated numerical
+//! error and allow direct comparison and hashing via [`ApproxHash`].
 //!
 //! [`ApproxHashMap`] is used for looking up approximate values.
 //!
@@ -27,15 +27,14 @@
 //! # Features
 //!
 //! The `rustc-hash` feature is enabled by default, and uses a faster hashing
-//! algorithm for the hash map inside [`FloatInterner`].
+//! algorithm for the hash map inside [`FloatPool`].
 
-pub mod hash;
 pub mod hash_map;
-pub mod intern;
+pub mod pool;
 pub mod precision;
 pub mod traits;
 
 pub use hash_map::ApproxHashMap;
-pub use intern::FloatInterner;
+pub use pool::FloatPool;
 pub use precision::Precision;
 pub use traits::*;

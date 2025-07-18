@@ -113,14 +113,9 @@ pub const MAX_RELATIVE: u32 = MANTISSA_BITS;
 ///
 /// `f64` only has 52 bits of precision, so all values `relative > 52` are
 /// equivalent to `relative = 52`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone)]
 pub struct Precision {
-    // #[cfg_attr(
-    //     test,
-    //     proptest(strategy = "1..=(MAX_ABSOLUTE - MIN_ABSOLUTE + 1) as u32")
-    // )]
     min_exponent: u32,
-    // #[cfg_attr(test, proptest(strategy = "0..=MAX_RELATIVE"))]
     mantissa_bits: u32,
 }
 
@@ -283,6 +278,10 @@ impl Precision {
     pub fn eq<T: ApproxEq>(self, a: T, b: T) -> bool {
         a.approx_eq(&b, self)
     }
+    /// Compares `a` and `b` using `T::approx_eq()` and returns whether `a != b`.
+    pub fn ne<T: ApproxEq>(self, a: T, b: T) -> bool {
+        !a.approx_eq(&b, self)
+    }
     /// Compares `a` and `b` using `T::approx_cmp()`.
     pub fn cmp<T: ApproxOrd>(self, a: T, b: T) -> Ordering {
         a.approx_cmp(&b, self)
@@ -293,7 +292,7 @@ impl Precision {
     }
     /// Compares `a` and `b` using `T::approx_cmp()` and returns whether `a > b`.
     pub fn gt<T: ApproxOrd>(self, a: T, b: T) -> bool {
-        self.cmp(a, b) == Ordering::Less
+        self.cmp(a, b) == Ordering::Greater
     }
     /// Compares `a` and `b` using `T::approx_cmp()` and returns whether `a <= b`.
     pub fn lt_eq<T: ApproxOrd>(self, a: T, b: T) -> bool {
@@ -307,6 +306,14 @@ impl Precision {
     /// Returns whether `a` is approximately equal to zero.
     pub fn eq_zero<T: ApproxEqZero>(self, a: T) -> bool {
         a.approx_eq_zero(self)
+    }
+    /// Returns whether `a` is approximately not-equal to zero.
+    pub fn ne_zero<T: ApproxEqZero>(self, a: T) -> bool {
+        !a.approx_eq_zero(self)
+    }
+    /// Compares `a` to zero.
+    pub fn cmp_zero<T: ApproxCmpZero>(self, a: T) -> Ordering {
+        a.approx_cmp_zero(self)
     }
     /// Returns whether `a` is approximately positive (greater than zero).
     pub fn is_pos<T: ApproxCmpZero>(self, a: T) -> bool {

@@ -6,9 +6,7 @@ use std::hash::{BuildHasher, BuildHasherDefault, Hasher, RandomState};
 
 use smallvec::{SmallVec, smallvec};
 
-use crate::hash::{ApproxHash, ApproxHasher, InterningApproxHasher};
-use crate::intern::FloatInterner;
-use crate::{ApproxEq, Precision};
+use crate::{ApproxHash, FloatPool, Precision};
 
 #[derive(Debug, Default, Copy, Clone)]
 struct TrivialHasher(u64);
@@ -31,7 +29,7 @@ impl Hasher for TrivialHasher {
 #[derive(Clone)]
 pub struct ApproxHashMap<K, V, S = RandomState> {
     hash_builder: S,
-    intern: FloatInterner,
+    pool: FloatPool,
     map: HashMap<u64, LinearApproxMap<K, V>, BuildHasherDefault<TrivialHasher>>,
     len: usize,
 }
@@ -59,7 +57,7 @@ impl<K, V, S> ApproxHashMap<K, V, S> {
     pub fn with_hasher(hash_builder: S, prec: Precision) -> ApproxHashMap<K, V, S> {
         ApproxHashMap {
             hash_builder,
-            intern: FloatInterner::new(prec),
+            pool: FloatPool::new(prec),
             map: HashMap::default(),
             len: 0,
         }
@@ -121,20 +119,20 @@ impl<K, V, S> ApproxHashMap<K, V, S> {
         &self.hash_builder
     }
 
-    /// Returns a reference to the map's [`FloatInterner`].
-    pub fn interner(&self) -> &FloatInterner {
-        &self.intern
+    /// Returns a reference to the map's [`FloatPool`].
+    pub fn float_pool(&self) -> &FloatPool {
+        &self.pool
     }
-    /// Returns a mutable reference to the map's [`FloatInterner`].
-    pub fn interner_mut(&mut self) -> &mut FloatInterner {
-        &mut self.intern
+
+    /// Returns the precision used to hash floats.
+    pub fn prec(&self) -> Precision {
+        self.pool.prec()
     }
 }
 
-impl<K, V, S> ApproxHashMap<K, V, S>
+impl<K, V> ApproxHashMap<K, V, RandomState>
 where
-    K: ApproxEq + ApproxHash,
-    S: BuildHasher,
+    K: ApproxHash,
 {
     /// Constructs a `HashMap<K, V>` from an iterator of key-value pairs.
     ///
@@ -149,13 +147,57 @@ where
         map
     }
 
+    /// Replaces all floats in `key` with interned ones that are approximately
+    /// equal, returning a mutated copy of `key`.
+    ///
+    /// If any floats in `key` are have not already been interned, they are
+    /// added to the pool and unmodified.
+    #[must_use = "intern() returns a mutated copy"]
+    pub fn intern(&mut self, key: K) -> K {
+        self.pool.intern(key)
+    }
+
+    /// Replaces all floats in `key` with interned ones that are approximately
+    /// equal.
+    ///
+    /// If any floats in `key` are have not already been interned, they are
+    /// added to the pool and unmodified.
+    pub fn intern_in_place(&mut self, key: &mut K) {
+        self.pool.intern_in_place(key);
+    }
+
+    /// Replaces all floats in `key` with interned ones that are approximately
+    /// equal, returning a mutated copy of `key`. Returns `None` if any floats
+    /// in `key` are not already in the pool.
+    #[must_use = "try_intern() returns a mutated copy"]
+    pub fn try_intern(&self, key: K) -> Option<K> {
+        self.pool.try_intern(key)
+    }
+}
+
+impl<K, V, S> ApproxHashMap<K, V, S>
+where
+    K: ApproxHash,
+    S: BuildHasher,
+{
     /// Returns an entry in the map for in-place manipulation.
-    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
-        let mut h = InterningApproxHasher::new(&self.hash_builder, &mut self.intern);
-        key.approx_hash(&mut h);
-        let Ok(hash) = h.try_finish();
+    pub fn entry(&mut self, mut key: K) -> Entry<'_, K, V> {
+        let hash = self.intern_and_hash(&mut key);
+        self.entry_with_interned_key(key, hash)
+    }
+    /// Returns an entry in the map for in-place manipulation.
+    ///
+    /// `key` is interned in-place.
+    pub fn entry_with_mut_key(&mut self, key: &mut K) -> Entry<'_, K, V>
+    where
+        K: Clone,
+    {
+        let hash = self.intern_and_hash(key);
+        self.entry_with_interned_key(key.clone(), hash)
+    }
+    fn entry_with_interned_key(&mut self, key: K, hash: u64) -> Entry<'_, K, V> {
         match self.map.entry(hash) {
-            hash_map::Entry::Occupied(e) => match e.get().index_of(&key, self.intern.prec()) {
+            hash_map::Entry::Occupied(e) => match e.get().index_of(&key) {
                 Some(index) => Entry::Occupied(OccupiedEntry {
                     hash_map_entry: e,
                     index,
@@ -176,36 +218,41 @@ where
     }
     /// Returns the value in the map associated to the given key (or something
     /// approximately equal).
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get(&self, key: K) -> Option<&V> {
         Some(self.get_key_value(key)?.1)
     }
     /// Returns the existing key-value pair that corresponds to the given key,
     /// or `None` if it is not present.
-    pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
+    pub fn get_key_value(&self, key: K) -> Option<(&K, &V)> {
         // Early exit optimization; don't bother hashing
         if self.is_empty() {
             return None;
         }
 
-        let mut approx_hasher = InterningApproxHasher::new(&self.hash_builder, &self.intern);
-        key.approx_hash(&mut approx_hasher);
-        let hash = approx_hasher.try_finish().ok()?;
+        let (key, hash) = self.try_intern_and_hash(key)?;
         let linear_map = self.map.get(&hash)?;
-        let index = linear_map.index_of(key, self.intern.prec())?;
+        let index = linear_map.index_of(&key)?;
         let (k, v) = linear_map.key_value(index);
         Some((k, v))
     }
     /// Returns whether the map contains a key.
     pub fn contains_key(&self, key: K) -> bool {
-        self.get(&key).is_some()
+        self.get(key).is_some()
     }
     /// Returns a mutable reference to the value corresponding to a key.
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        let mut h = InterningApproxHasher::new(&self.hash_builder, &self.intern);
-        key.approx_hash(&mut h);
-        let hash = h.try_finish().ok()?;
+    pub fn get_mut(&mut self, mut key: K) -> Option<&mut V> {
+        let hash = self.intern_and_hash(&mut key);
         let linear_map = self.map.get_mut(&hash)?;
-        let index = linear_map.index_of(key, self.intern.prec())?;
+        let index = linear_map.index_of(&key)?;
+        Some(linear_map.value_mut(index))
+    }
+    /// Returns a mutable reference to the value corresponding to a key.
+    ///
+    /// `key` is interned in-place.
+    pub fn get_mut_with_mut_key(&mut self, key: &mut K) -> Option<&mut V> {
+        let hash = self.intern_and_hash(key);
+        let linear_map = self.map.get_mut(&hash)?;
+        let index = linear_map.index_of(&key)?;
         Some(linear_map.value_mut(index))
     }
     /// Inserts an entry into the map and returns the old value, if any.
@@ -218,20 +265,48 @@ where
             }
         }
     }
+    /// Inserts an entry into the map and returns the old value, if any.
+    ///
+    /// `key` is interned in-place.
+    pub fn insert_with_mut_key(&mut self, key: &mut K, value: V) -> Option<V>
+    where
+        K: Clone,
+    {
+        match self.entry_with_mut_key(key) {
+            Entry::Occupied(mut e) => Some(e.insert(value)),
+            Entry::Vacant(e) => {
+                e.insert(value);
+                None
+            }
+        }
+    }
     /// Removes an entry from the map and returns the value, or `None` if the
     /// key was not present.
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    pub fn remove(&mut self, key: K) -> Option<V> {
         Some(self.remove_entry(key)?.1)
     }
     /// Removes an entry from the map and returns the key-value pair, or `None`
     /// if the key was not present.
-    pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
-        let mut h = InterningApproxHasher::new(&self.hash_builder, &self.intern);
-        key.approx_hash(&mut h);
-        let hash = h.try_finish().ok()?;
+    pub fn remove_entry(&mut self, mut key: K) -> Option<(K, V)> {
+        let hash = self.intern_and_hash(&mut key);
         let linear_map = self.map.get_mut(&hash)?;
-        let index = linear_map.index_of(key, self.intern.prec())?;
+        let index = linear_map.index_of(&key)?;
         Some(linear_map.remove(index))
+    }
+
+    fn try_intern_and_hash(&self, key: K) -> Option<(K, u64)> {
+        let key = self.pool.try_intern(key)?;
+        let mut h = self.hash_builder.build_hasher();
+        key.interned_hash(&mut h);
+        let hash = h.finish();
+        Some((key, hash))
+    }
+    fn intern_and_hash(&mut self, key: &mut K) -> u64 {
+        self.pool.intern_in_place(key);
+        let mut h = self.hash_builder.build_hasher();
+        key.interned_hash(&mut h);
+        let hash = h.finish();
+        hash
     }
 }
 
@@ -445,7 +520,7 @@ impl<'a, K, V> VacantEntry<'a, K, V> {
 
 impl<K, V, S> Extend<(K, V)> for ApproxHashMap<K, V, S>
 where
-    K: ApproxEq + ApproxHash,
+    K: ApproxHash,
     S: BuildHasher,
 {
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
@@ -477,9 +552,9 @@ impl<K, V> LinearApproxMap<K, V> {
         self.0.into_iter().next().expect(msg)
     }
 }
-impl<K: ApproxEq, V> LinearApproxMap<K, V> {
-    fn index_of(&self, key: &K, prec: Precision) -> Option<usize> {
-        self.0.iter().position(|(k, _)| k.approx_eq(key, prec))
+impl<K: ApproxHash, V> LinearApproxMap<K, V> {
+    fn index_of(&self, key: &K) -> Option<usize> {
+        self.0.iter().position(|(k, _)| k.interned_eq(key))
     }
 }
 impl<K, V> LinearApproxMap<K, V> {
@@ -548,12 +623,12 @@ mod tests {
         map.insert([0.6, 0.2], 'c');
         map.insert([0.15, -3.0], 'd');
 
-        assert_eq!(map.get(&[-5.12, -3.0]), None);
-        assert_eq!(map.get(&[0.5, -3.0]), None);
-        assert_eq!(map.get(&[0.12, -3.0]), Some(&'d'));
-        assert_eq!(map.get(&[-0.12, -2.9]), Some(&'d'));
-        assert_eq!(map.get(&[-0.12, 2.9]), None);
-        assert_eq!(map.get(&[0.44, 5.0]), Some(&'b'));
-        assert_eq!(map.get(&[0.4, 0.3]), Some(&'c'));
+        assert_eq!(map.get([-5.12, -3.0]), None);
+        assert_eq!(map.get([0.5, -3.0]), None);
+        assert_eq!(map.get([0.12, -3.0]), Some(&'d'));
+        assert_eq!(map.get([-0.12, -2.9]), Some(&'d'));
+        assert_eq!(map.get([-0.12, 2.9]), None);
+        assert_eq!(map.get([0.44, 5.0]), Some(&'b'));
+        assert_eq!(map.get([0.4, 0.3]), Some(&'c'));
     }
 }
