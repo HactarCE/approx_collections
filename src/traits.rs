@@ -7,6 +7,21 @@ use std::{
 
 use crate::Precision;
 
+macro_rules! impl_for_tuples {
+    ($impl_macro:ident) => {
+        $impl_macro!(T0; 0);
+        $impl_macro!(T0, T1; 0, 1);
+        $impl_macro!(T0, T1, T2; 0, 1, 2);
+        $impl_macro!(T0, T1, T2, T3; 0, 1, 2, 3);
+        $impl_macro!(T0, T1, T2, T3, T4; 0, 1, 2, 3, 4);
+        $impl_macro!(T0, T1, T2, T3, T4, T5; 0, 1, 2, 3, 4, 5);
+        $impl_macro!(T0, T1, T2, T3, T4, T5, T6; 0, 1, 2, 3, 4, 5, 6);
+        $impl_macro!(T0, T1, T2, T3, T4, T5, T6, T7; 0, 1, 2, 3, 4, 5, 6, 7);
+        $impl_macro!(T0, T1, T2, T3, T4, T5, T6, T7, T8; 0, 1, 2, 3, 4, 5, 6, 7, 8);
+        $impl_macro!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9; 0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+    };
+}
+
 /// Trait for types that can be approximately compared for equality with each
 /// other.
 pub trait ApproxEq: std::fmt::Debug {
@@ -49,6 +64,25 @@ impl<T: ApproxEq + ?Sized> ApproxEq for &T {
         T::approx_eq(self, other, prec)
     }
 }
+impl<T: ApproxEq> ApproxEq for Option<T> {
+    fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
+        match (self, other) {
+            (None, None) => true,
+            (None, Some(_)) | (Some(_), None) => false,
+            (Some(a), Some(b)) => a.approx_eq(b, prec),
+        }
+    }
+}
+macro_rules! impl_approx_eq_for_tuple {
+    ($($generic_param:ident),+; $($index:tt),+) => {
+        impl<$($generic_param: ApproxEq,)+> ApproxEq for ($($generic_param,)+) {
+            fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
+                $(self.$index.approx_eq(&other.$index, prec))&&+
+            }
+        }
+    };
+}
+impl_for_tuples!(impl_approx_eq_for_tuple);
 
 /// Trait for types that can be approximately compared to some zero value.
 pub trait ApproxEqZero {
@@ -93,6 +127,16 @@ impl<T: ApproxEqZero + ?Sized> ApproxEqZero for &T {
         T::approx_eq_zero(self, prec)
     }
 }
+macro_rules! impl_approx_eq_zero_for_tuple {
+    ($($generic_param:ident),+; $($index:tt),+) => {
+        impl<$($generic_param: ApproxEqZero,)+> ApproxEqZero for ($($generic_param,)+) {
+            fn approx_eq_zero(&self, prec: Precision) -> bool {
+                $(self.$index.approx_eq_zero(prec))&&+
+            }
+        }
+    };
+}
+impl_for_tuples!(impl_approx_eq_zero_for_tuple);
 
 /// Trait for types that can be approximately ordered with each other.
 ///
@@ -146,6 +190,32 @@ impl<T: ApproxOrd + ?Sized> ApproxOrd for &T {
         T::approx_cmp(self, other, prec)
     }
 }
+impl<T: ApproxOrd> ApproxOrd for Option<T> {
+    fn approx_cmp(&self, other: &Self, prec: Precision) -> Ordering {
+        match (self, other) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+            (Some(a), Some(b)) => a.approx_cmp(b, prec),
+        }
+    }
+}
+macro_rules! impl_approx_ord_for_tuple {
+    ($($generic_param:ident),+; $($index:tt),+) => {
+        impl<$($generic_param: ApproxOrd,)+> ApproxOrd for ($($generic_param,)+) {
+            fn approx_cmp(&self, other: &Self, prec: Precision) -> Ordering {
+                $(
+                    match self.$index.approx_cmp(&other.$index, prec) {
+                        Ordering::Equal => (),
+                        nonequal => return nonequal,
+                    }
+                )+
+                Ordering::Equal
+            }
+        }
+    };
+}
+impl_for_tuples!(impl_approx_ord_for_tuple);
 
 pub trait ApproxCmpZero: ApproxEqZero {
     fn approx_cmp_zero(&self, prec: Precision) -> Ordering;
@@ -176,6 +246,22 @@ impl<T: ApproxCmpZero> ApproxCmpZero for &T {
         T::approx_cmp_zero(self, prec)
     }
 }
+macro_rules! impl_approx_cmp_zero_for_tuple {
+    ($($generic_param:ident),+; $($index:tt),+) => {
+        impl<$($generic_param: ApproxCmpZero,)+> ApproxCmpZero for ($($generic_param,)+) {
+            fn approx_cmp_zero(&self, prec: Precision) -> Ordering {
+                $(
+                    match self.$index.approx_cmp_zero(prec) {
+                        Ordering::Equal => (),
+                        nonequal => return nonequal,
+                    }
+                )+
+                Ordering::Equal
+            }
+        }
+    };
+}
+impl_for_tuples!(impl_approx_cmp_zero_for_tuple);
 
 /// Trait for types that can be stored in a [`crate::ApproxHashMap`].
 pub trait ApproxHash {
@@ -284,3 +370,43 @@ impl<T: ApproxHash> ApproxHash for &mut T {
         T::interned_hash(self, state);
     }
 }
+impl<T: ApproxHash> ApproxHash for Option<T> {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        if let Some(inner) = self {
+            inner.intern_floats(f);
+        }
+    }
+
+    fn interned_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (None, None) => true,
+            (None, Some(_)) | (Some(_), None) => false,
+            (Some(a), Some(b)) => a.interned_eq(b),
+        }
+    }
+
+    fn interned_hash<H: Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+        if let Some(inner) = self {
+            inner.interned_hash(state);
+        }
+    }
+}
+macro_rules! impl_approx_hash_for_tuple {
+    ($($generic_param:ident),+; $($index:tt),+) => {
+        impl<$($generic_param: ApproxHash,)+> ApproxHash for ($($generic_param,)+) {
+            fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+                $(self.$index.intern_floats(f);)+
+            }
+
+            fn interned_eq(&self, other: &Self) -> bool {
+                $(self.$index.interned_eq(&other.$index))&&+
+            }
+
+            fn interned_hash<H: Hasher>(&self, state: &mut H) {
+                $(self.$index.interned_hash(state);)+
+            }
+        }
+    };
+}
+impl_for_tuples!(impl_approx_hash_for_tuple);

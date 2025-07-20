@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `impl {ApproxEq, ApproxOrd, ApproxHash} for Option<T>`
+- `impl {ApproxEq, ApproxEqZero, ApproxOrd, ApproxCmpZero, ApproxHash} for (T0, T1, ...)` (tuples up to length 10)
+
 ## [3.0.0]
 
 Values must now be interned to be stored in an `ApproxHashMap`. This aligns better with intended use cases in geometric puzzle simulation.
