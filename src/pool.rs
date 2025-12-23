@@ -1,6 +1,6 @@
 //! Interner that canonicalizes similar floats.
 
-use std::fmt;
+use std::{collections::hash_map, fmt};
 
 use crate::{ApproxHash, Precision};
 
@@ -133,6 +133,39 @@ impl FloatPool {
     /// Returns the number of occupied buckets in the pool.
     pub fn len(&self) -> usize {
         self.floats.len()
+    }
+
+    /// Iterates over all floats in the pool, in an undefined order.
+    pub fn iter(&self) -> FloatPoolIter<'_> {
+        FloatPoolIter {
+            pool: self,
+            hash_map_iter: self.floats.iter(),
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a FloatPool {
+    type Item = f64;
+
+    type IntoIter = FloatPoolIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// Iterator over floats in a [`FloatPool`].
+pub struct FloatPoolIter<'a> {
+    pool: &'a FloatPool,
+    hash_map_iter: hash_map::Iter<'a, u64, f64>,
+}
+impl Iterator for FloatPoolIter<'_> {
+    type Item = f64;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.hash_map_iter
+            .find(|&(&k, &v)| self.pool.prec.bucket(v) == k)
+            .map(|(_k, &v)| v)
     }
 }
 
