@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `FloatPool::len()`
+
+## [3.1.0]
+
+### Added
+
 - `impl {ApproxEq, ApproxOrd, ApproxHash} for Option<T>`
 - `impl {ApproxEq, ApproxEqZero, ApproxOrd, ApproxCmpZero, ApproxHash} for (T0, T1, ...)` (tuples up to length 10)
 
@@ -92,6 +98,7 @@ Values must now be interned to be stored in an `ApproxHashMap`. This aligns bett
 - `FloatInterner` and `ApproxHashMap` data structures
 - Entry API for `ApproxHashMap`
 
+[3.1.0]: https://github.com/HactarCE/approx_collections/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/HactarCE/approx_collections/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/HactarCE/approx_collections/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/HactarCE/approx_collections/compare/v1.0.0...v1.1.0

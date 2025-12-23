@@ -116,6 +116,11 @@ impl FloatPool {
             }
         }
     }
+
+    /// Returns the number of occupied buckets in the pool.
+    pub fn len(&self) -> usize {
+        self.floats.len()
+    }
 }
 
 #[cfg(test)]
