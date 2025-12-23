@@ -1,5 +1,7 @@
 //! Interner that canonicalizes similar floats.
 
+use std::fmt;
+
 use crate::{ApproxHash, Precision};
 
 #[cfg(feature = "rustc-hash")]
@@ -25,10 +27,25 @@ type HashMap<K, V> = std::collections::HashMap<K, V>;
 /// assert_eq!(pool.intern(3.0 - very_small_delta), 3.0 - very_small_delta);
 /// assert_eq!(pool.intern(3.0), 3.0 - very_small_delta);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FloatPool {
     prec: Precision,
     floats: HashMap<u64, f64>,
+}
+
+impl fmt::Debug for FloatPool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut floats = self
+            .floats
+            .iter()
+            .map(|(&k, &v)| (k, v))
+            .collect::<Vec<_>>();
+        floats.sort_by_key(|&(k, _v)| k);
+        f.debug_struct("FloatPool")
+            .field("prec", &self.prec)
+            .field("floats", &floats)
+            .finish()
+    }
 }
 
 impl Default for FloatPool {
