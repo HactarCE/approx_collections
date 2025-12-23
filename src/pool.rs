@@ -35,12 +35,8 @@ pub struct FloatPool {
 
 impl fmt::Debug for FloatPool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut floats = self
-            .floats
-            .iter()
-            .map(|(&k, &v)| (k, v))
-            .collect::<Vec<_>>();
-        floats.sort_by_key(|&(k, _v)| k);
+        let floats: std::collections::BTreeMap<_, _> =
+            self.floats.iter().map(|(&k, &v)| (k, v)).collect();
         f.debug_struct("FloatPool")
             .field("prec", &self.prec)
             .field("floats", &floats)
