@@ -1,0 +1,14 @@
+[lib]
+proc-macro = true
+
+[package]
+name = "approx_eq-derive"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+quote = "1.0.43"
+syn = "2.0.114"
+
+[lints]
+workspace = true

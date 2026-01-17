@@ -29,6 +29,7 @@
 //! The `rustc-hash` feature is enabled by default, and uses a faster hashing
 //! algorithm for the hash map inside [`FloatPool`].
 
+pub mod derive_tests;
 pub mod hash_map;
 pub mod pool;
 pub mod precision;
