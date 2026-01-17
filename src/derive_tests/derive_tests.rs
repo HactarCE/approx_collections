@@ -22,6 +22,11 @@ enum Empty {}
 #[derive(Debug, ApproxEq)]
 struct Empty2 {}
 
+#[derive(Debug, ApproxEq)]
+struct Test3<const N: usize> {
+    data: [f64; N],
+}
+
 // #[derive(Debug, ApproxEq)]
 // union UnionTest {
 //     one: f64,
