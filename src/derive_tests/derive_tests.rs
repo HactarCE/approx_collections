@@ -1,5 +1,5 @@
-use crate::traits::ApproxEq;
-use approx_eq_derive::ApproxEq;
+use crate::{ApproxEqZero, traits::ApproxEq};
+use approx_eq_derive::{ApproxEq, ApproxEqZero};
 
 use crate::Precision;
 
@@ -12,8 +12,8 @@ pub struct Coord {
 #[derive(Debug, ApproxEq)]
 struct Coord2(f64, f64);
 
-#[derive(Debug, ApproxEq)]
-struct Wrapper<'a, T: ApproxEq> {
+#[derive(Debug, ApproxEq, ApproxEqZero)]
+struct Wrapper<'a, T: ApproxEq + ApproxEqZero> {
     data: &'a T,
 }
 
@@ -21,6 +21,14 @@ struct Wrapper<'a, T: ApproxEq> {
 enum Empty {}
 #[derive(Debug, ApproxEq)]
 struct Empty2 {}
+
+struct NoDebug {}
+
+// #[derive(Debug, ApproxEq)]
+// struct Test6 {
+//     f1: f64,
+//     f2: NoDebug,
+// }
 
 #[derive(Debug, ApproxEq)]
 struct Test3<const N: usize> {
