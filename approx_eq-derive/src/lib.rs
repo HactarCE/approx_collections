@@ -59,7 +59,7 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
 ///
 /// Can be used on structs and enums of any kind.
 ///
-/// Two instances of a struct are approx_eq if all of their fields are approx_eq
+/// Two instances of a struct are approx_eq if all of their fields are approx_eq.
 ///
 /// ```
 /// #[derive(Debug, ApproxEq)]
@@ -105,8 +105,6 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
 /// assert!(ApproxEq::approx_eq(&Foo::Bar2(5.0), &Foo::Bar2(5.0), Precision::DEFAULT));
 /// assert!(ApproxEq::approx_eq(&Foo::Bar3, &Foo::Bar3, Precision::DEFAULT));
 /// assert!(!ApproxEq::approx_eq(&Foo::Bar1{data: 5.0}, &Foo::Bar2(5.0), Precision::DEFAULT));
-///
-///
 /// ```
 ///
 /// Not implemented for union types.
