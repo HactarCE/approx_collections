@@ -55,9 +55,12 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
         Fields::Unit => quote! {(Self::#ident, Self::#ident) => true},
     }
 }
+
 /// Derives the ApproxEq trait.
 ///
 /// Can be used on structs and enums of any kind.
+///
+/// ## Structs
 ///
 /// Two instances of a struct are approx_eq if all of their fields are approx_eq.
 ///
@@ -89,6 +92,8 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
 ///
 /// Two instances of a unit struct are always approx_eq.
 ///
+/// ## Enums
+///
 /// Two instances of an enum are approx_eq if they are the same variant, and the data they contain is approx_eq.
 ///
 /// Unit variants of an enum are always approx_eq.
@@ -106,6 +111,8 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
 /// assert!(ApproxEq::approx_eq(&Foo::Bar3, &Foo::Bar3, Precision::DEFAULT));
 /// assert!(!ApproxEq::approx_eq(&Foo::Bar1{data: 5.0}, &Foo::Bar2(5.0), Precision::DEFAULT));
 /// ```
+///
+/// ## Unions
 ///
 /// Not implemented for union types.
 #[proc_macro_derive(ApproxEq)]
@@ -177,6 +184,8 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
 ///
 /// Can be used on structs, but not enums or unions.
 ///
+/// ## Structs
+///
 /// An instance of a struct is approx_eq_zero if all of its fields are approx_eq_zero.
 ///
 /// Structs with no fields are always approx_eq_zero.
@@ -194,7 +203,6 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// Structs with unnamed fields are also supported and work exactly the same as structs with named fields.
-
 #[proc_macro_derive(ApproxEqZero)]
 pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
     let DeriveInput {
