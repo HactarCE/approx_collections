@@ -142,7 +142,7 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
                 quote! {
                     #impl_block {
                         fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
-                            true #(&& ApproxEq::approx_eq(&self.#fixed_names, &other.#fixed_names, prec))*
+                            true #(&& ::approx_collections::ApproxEq::approx_eq(&self.#fixed_names, &other.#fixed_names, prec))*
                         }
                     }
                 }
@@ -153,7 +153,7 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
                 quote! {
                     #impl_block {
                         fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
-                            true #(&& ApproxEq::approx_eq(&self.#i, &other.#i, prec))*
+                            true #(&& ::approx_collections::ApproxEq::approx_eq(&self.#i, &other.#i, prec))*
                         }
                     }
                 }
@@ -232,7 +232,7 @@ pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
                 quote! {
                     #impl_block {
                         fn approx_eq_zero(&self, prec: Precision) -> bool {
-                            true #(&& ApproxEqZero::approx_eq_zero(&self.#fixed_names, prec))*
+                            true #(&& ::approx_collections::ApproxEqZero::approx_eq_zero(&self.#fixed_names, prec))*
                         }
                     }
                 }
@@ -243,7 +243,7 @@ pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
                 quote! {
                     #impl_block {
                         fn approx_eq_zero(&self, prec: Precision) -> bool {
-                            true #(&& ApproxEqZero::approx_eq_zero(&self.#i, prec))*
+                            true #(&& ::approx_collections::ApproxEqZero::approx_eq_zero(&self.#i, prec))*
                         }
                     }
                 }

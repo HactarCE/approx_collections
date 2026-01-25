@@ -37,11 +37,9 @@ pub mod pool;
 pub mod precision;
 pub mod traits;
 
+#[cfg(feature = "derive")]
+pub use approx_collections_derive::{ApproxEq, ApproxEqZero};
 pub use hash_map::ApproxHashMap;
 pub use pool::FloatPool;
 pub use precision::Precision;
 pub use traits::*;
-
-#[cfg(feature = "derive")]
-#[cfg(test)]
-pub mod derive_tests;

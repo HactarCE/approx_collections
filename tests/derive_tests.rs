@@ -1,12 +1,12 @@
 #![allow(dead_code)]
+
 // A lot of the structs/enums in here are not used in any test, but rather are
 // included to test the proc macro to make sure the code it generates doesn't
 // throw any errors. Thus I allow dead code.
 
-use crate::Precision;
-use crate::{ApproxEqZero, traits::ApproxEq};
+use approx_collections::{ApproxEq, ApproxEqZero, Precision};
 
-use approx_collections_derive::{ApproxEq, ApproxEqZero};
+fn main() {}
 
 #[derive(Debug, ApproxEq, ApproxEqZero)]
 pub struct Coordinate {
@@ -43,10 +43,8 @@ where
     Data2(&'b T),
 }
 
-// #[derive(Debug, ApproxEq, ApproxEqZero)]
-enum Empty {}
 #[derive(Debug, ApproxEq)]
-struct Empty2 {}
+struct Empty {}
 
 struct NoDebug {}
 

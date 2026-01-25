@@ -9,6 +9,7 @@ rust-version = "1.88.0"
 keywords = ["math", "equality", "approximate", "float", "comparison"]
 categories = ["data-structures", "mathematics"]
 license = "MIT OR Apache-2.0"
+autotests = true
 
 [workspace]
 members = ["derive"]
