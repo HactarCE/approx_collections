@@ -6,7 +6,7 @@ version = 4
 name = "approx_collections"
 version = "3.2.0"
 dependencies = [
- "approx_eq-derive",
+ "approx_collections_derive",
  "proptest",
  "proptest-macro",
  "rustc-hash",
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "approx_eq-derive"
+name = "approx_collections_derive"
 version = "0.1.0"
 dependencies = [
  "quote",
