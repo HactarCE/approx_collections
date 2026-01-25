@@ -81,7 +81,7 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
 /// ```
 ///
 /// Note that in this example, the `ApproxEq` implementation uses the [taxicab
-/// metric] rather than [Euclidian metric].
+/// metric] rather than the [Euclidean metric].
 ///
 /// [taxicab metric]: https://en.wikipedia.org/wiki/Taxicab_geometry
 /// [Euclidean metric]: https://en.wikipedia.org/wiki/Euclidean_distance
