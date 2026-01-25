@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.2.0]
 
 ### Added
 
@@ -106,6 +106,7 @@ Values must now be interned to be stored in an `ApproxHashMap`. This aligns bett
 - `FloatInterner` and `ApproxHashMap` data structures
 - Entry API for `ApproxHashMap`
 
+[3.2.0]: https://github.com/HactarCE/approx_collections/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/HactarCE/approx_collections/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/HactarCE/approx_collections/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/HactarCE/approx_collections/compare/v1.1.0...v2.0.0
