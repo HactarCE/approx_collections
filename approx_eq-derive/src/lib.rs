@@ -179,6 +179,8 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
 ///
 /// An instance of a struct is approx_eq_zero if all of its fields are approx_eq_zero.
 ///
+/// Structs with no fields are always approx_eq_zero.
+///
 /// ```
 /// #[derive(Debug, ApproxEqZero)]
 /// struct Coordinate {
@@ -190,6 +192,8 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
 /// assert!( !ApproxEqZero::approx_eq_zero(&c1, Precision::DEFAULT) );
 /// assert!( ApproxEqZero::approx_eq_zero(&c2, Precision::DEFAULT) );
 /// ```
+///
+/// Structs with unnamed fields are also supported and work exactly the same as structs with named fields.
 
 #[proc_macro_derive(ApproxEqZero)]
 pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
