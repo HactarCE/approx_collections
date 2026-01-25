@@ -59,13 +59,14 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
     }
 }
 
-/// Derives the ApproxEq trait.
+/// Derives the `ApproxEq` trait on a struct or enum.
 ///
-/// Can be used on structs and enums of any kind.
+/// This cannot be used on union types.
 ///
 /// ## Structs
 ///
-/// Two instances of a struct are approx_eq if all of their fields are approx_eq.
+/// Two instances of a struct are approximately equal if all of their
+/// corresponding fields are approximately equal.
 ///
 /// ```
 /// #[derive(Debug, ApproxEq)]
@@ -73,15 +74,19 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
 ///     x: f32,
 ///     y: f32,
 /// }
-/// let c1 = Coordinate{x: 5.0, y: 4.0};
-/// let c2 = Coordinate{x: 4.0, y: 5.0};
-/// assert!( ApproxEq::approx_eq(&c1, &c1, Precision::DEFAULT) );
-/// assert!( !ApproxEq::approx_eq(&c1, &c2, Precision::DEFAULT) );
+/// let c1 = Coordinate { x: 5.0, y: 4.0 };
+/// let c2 = Coordinate { x: 4.0, y: 5.0 };
+/// assert!(ApproxEq::approx_eq(&c1, &c1, Precision::DEFAULT));
+/// assert!(!ApproxEq::approx_eq(&c1, &c2, Precision::DEFAULT));
 /// ```
 ///
-/// Note that in this example, the ApproxEq implementation uses the taxi-cab metric instead of the standard euclidian metric.
+/// Note that in this example, the `ApproxEq` implementation uses the [taxicab
+/// metric] rather than [Euclidian metric].
 ///
-/// When used on a struct with unnamed fields, the same behavior holds -- the fields will be compared by index.
+/// [taxicab metric]: https://en.wikipedia.org/wiki/Taxicab_geometry
+/// [Euclidean metric]: https://en.wikipedia.org/wiki/Euclidean_distance
+///
+/// Tuple structs are also supported.
 ///
 /// ```
 /// #[derive(Debug, ApproxEq)]
@@ -89,35 +94,35 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
 ///
 /// let c1 = Coordinate(5.0, 4.0);
 /// let c2 = Coordinate(4.0, 5.0);
-/// assert!( ApproxEq::approx_eq(&c1, &c1, Precision::DEFAULT) );
-/// assert!( !ApproxEq::approx_eq(&c1, &c2, Precision::DEFAULT) );
+/// assert!(ApproxEq::approx_eq(&c1, &c1, Precision::DEFAULT));
+/// assert!(!ApproxEq::approx_eq(&c1, &c2, Precision::DEFAULT));
 /// ```
 ///
-/// Two instances of a unit struct are always approx_eq.
+/// Two Instances of a unit struct are always approximately equal to each other.
 ///
 /// ## Enums
 ///
-/// Two instances of an enum are approx_eq if they are the same variant, and the data they contain is approx_eq.
+/// Two instances of an enum are approximately equal if they are the same
+/// variant and the data they contain is approximately equal.
 ///
-/// Unit variants of an enum are always approx_eq.
+/// Two instances of the same unit variants of an enum are always approximately
+/// equal to each other.
 ///
 /// ```
 /// #[derive(Debug, ApproxEq)]
 /// enum Foo {
-///     Bar1{data: f32},
+///     Bar1 { data: f32 },
 ///     Bar2(f32),
 ///     Bar3,
+///     Bar4,
 /// }
 ///
-/// assert!(ApproxEq::approx_eq(&Foo::Bar1{data: 5.0}, &Foo::Bar1{data: 5.0}, Precision::DEFAULT));
+/// assert!(ApproxEq::approx_eq(&Foo::Bar1 { data: 5.0 }, &Foo::Bar1 { data: 5.0 }, Precision::DEFAULT));
 /// assert!(ApproxEq::approx_eq(&Foo::Bar2(5.0), &Foo::Bar2(5.0), Precision::DEFAULT));
 /// assert!(ApproxEq::approx_eq(&Foo::Bar3, &Foo::Bar3, Precision::DEFAULT));
-/// assert!(!ApproxEq::approx_eq(&Foo::Bar1{data: 5.0}, &Foo::Bar2(5.0), Precision::DEFAULT));
+/// assert!(!ApproxEq::approx_eq(&Foo::Bar1 { data: 5.0 }, &Foo::Bar2(5.0), Precision::DEFAULT));
+/// assert!(!ApproxEq::approx_eq(&Foo::Bar3, &Foo::Bar4, Precision::DEFAULT));
 /// ```
-///
-/// ## Unions
-///
-/// Not implemented for union types.
 #[proc_macro_derive(ApproxEq)]
 pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
     let DeriveInput {
@@ -186,15 +191,16 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Derives the ApproxEqZero trait.
+/// Derives `ApproxEqZero` on a struct.
 ///
-/// Can be used on structs, but not enums or unions.
+/// This cannot be used on enums or union types.
 ///
 /// ## Structs
 ///
-/// An instance of a struct is approx_eq_zero if all of its fields are approx_eq_zero.
+/// A struct is approximately equal to zero if all of its fields are
+/// approximately equal to zero
 ///
-/// Structs with no fields are always approx_eq_zero.
+/// A struct with no fields is always approximately equal to zero.
 ///
 /// ```
 /// #[derive(Debug, ApproxEqZero)]
@@ -202,13 +208,11 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
 ///     x: f32,
 ///     y: f32,
 /// }
-/// let c1 = Coordinate{x: 0.0, y: 4.0};
-/// let c2 = Coordinate{x: 0.0, y: 0.0};
-/// assert!( !ApproxEqZero::approx_eq_zero(&c1, Precision::DEFAULT) );
-/// assert!( ApproxEqZero::approx_eq_zero(&c2, Precision::DEFAULT) );
+/// let c1 = Coordinate { x: 0.0, y: 4.0 };
+/// let c2 = Coordinate { x: 0.0, y: 0.0 };
+/// assert!(!ApproxEqZero::approx_eq_zero(&c1, Precision::DEFAULT));
+/// assert!(ApproxEqZero::approx_eq_zero(&c2, Precision::DEFAULT));
 /// ```
-///
-/// Structs with unnamed fields are also supported and work exactly the same as structs with named fields.
 #[proc_macro_derive(ApproxEqZero)]
 pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
     let DeriveInput {

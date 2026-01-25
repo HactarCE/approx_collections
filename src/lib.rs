@@ -28,6 +28,9 @@
 //!
 //! The `rustc-hash` feature is enabled by default, and uses a faster hashing
 //! algorithm for the hash map inside [`FloatPool`].
+//!
+//! The `derive` feature is enabled by default, and provides derive macros for
+//! [`ApproxEq`] and [`ApproxEqZero`].
 
 pub mod hash_map;
 pub mod pool;
