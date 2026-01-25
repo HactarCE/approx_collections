@@ -1,0 +1,261 @@
+#![allow(missing_docs)]
+
+use proc_macro::{Span, TokenStream};
+use quote::{ToTokens, format_ident, quote};
+use syn::{
+    Data, DeriveInput, Error, Fields, GenericParam, Generics, Ident, Variant, parse_macro_input,
+};
+
+fn get_impl_block(ident: &Ident, generics: &Generics) -> impl ToTokens {
+    let gens2 = generics.params.clone().into_iter().map(|p| match p {
+        GenericParam::Lifetime(lifetime_param) => lifetime_param.lifetime.to_token_stream(),
+        GenericParam::Type(type_param) => type_param.ident.to_token_stream(),
+        GenericParam::Const(const_param) => const_param.ident.to_token_stream(),
+    });
+    let gens = generics.params.clone().into_iter();
+    match &generics.where_clause {
+        Some(clause) => quote! {impl<#(#gens ,)*> ApproxEq for #ident<#(#gens2 ,)*> #clause},
+        None => quote! { impl<#(#gens ,)*> ApproxEq for #ident<#(#gens2 ,)*> },
+    }
+}
+
+fn get_impl_block_zero(ident: &Ident, generics: &Generics) -> impl ToTokens {
+    let gens2 = generics.params.clone().into_iter().map(|p| match p {
+        GenericParam::Lifetime(lifetime_param) => lifetime_param.lifetime.to_token_stream(),
+        GenericParam::Type(type_param) => type_param.ident.to_token_stream(),
+        GenericParam::Const(const_param) => const_param.ident.to_token_stream(),
+    });
+    let gens = generics.params.clone().into_iter();
+    match &generics.where_clause {
+        Some(clause) => quote! {impl<#(#gens ,)*> ApproxEqZero for #ident<#(#gens2 ,)*> #clause},
+        None => quote! { impl<#(#gens ,)*> ApproxEqZero for #ident<#(#gens2 ,)*> },
+    }
+}
+
+fn get_variant_match(variant: &Variant) -> impl ToTokens {
+    let ident = &variant.ident;
+    match &variant.fields {
+        Fields::Named(fields_named) => {
+            let fixed_names = fields_named.named.iter().map(|f| f.ident.as_ref().unwrap());
+            let self_names = fixed_names.clone().map(|x| format_ident!("slf_{}", x));
+            let other_names = fixed_names.clone().map(|x| format_ident!("other_{}", x));
+            let self_names2 = self_names.clone();
+            let other_names2 = other_names.clone();
+            let fixed_names2 = fixed_names.clone();
+            quote! { (Self::#ident{#(#fixed_names: #self_names,)*}, Self::#ident{#(#fixed_names2: #other_names,)*}) => true #(&& ApproxEq::approx_eq(&#self_names2, &#other_names2, prec))* }
+        }
+        Fields::Unnamed(fields_unnamed) => {
+            let self_names = (0..fields_unnamed.unnamed.len()).map(|x| format_ident!("slf_{}", x));
+            let other_names =
+                (0..fields_unnamed.unnamed.len()).map(|x| format_ident!("other_{}", x));
+            let self_names2 = self_names.clone();
+            let other_names2 = other_names.clone();
+            quote! { (Self::#ident(#(#self_names,)*), Self::#ident(#(#other_names,)*)) => true #(&& ApproxEq::approx_eq(&#self_names2, &#other_names2, prec))* }
+        }
+        Fields::Unit => quote! {(Self::#ident, Self::#ident) => true},
+    }
+}
+
+/// Derives the ApproxEq trait.
+///
+/// Can be used on structs and enums of any kind.
+///
+/// ## Structs
+///
+/// Two instances of a struct are approx_eq if all of their fields are approx_eq.
+///
+/// ```
+/// #[derive(Debug, ApproxEq)]
+/// struct Coordinate {
+///     x: f32,
+///     y: f32,
+/// }
+/// let c1 = Coordinate{x: 5.0, y: 4.0};
+/// let c2 = Coordinate{x: 4.0, y: 5.0};
+/// assert!( ApproxEq::approx_eq(&c1, &c1, Precision::DEFAULT) );
+/// assert!( !ApproxEq::approx_eq(&c1, &c2, Precision::DEFAULT) );
+/// ```
+///
+/// Note that in this example, the ApproxEq implementation uses the taxi-cab metric instead of the standard euclidian metric.
+///
+/// When used on a struct with unnamed fields, the same behavior holds -- the fields will be compared by index.
+///
+/// ```
+/// #[derive(Debug, ApproxEq)]
+/// struct Coordinate(f32, f32);
+///
+/// let c1 = Coordinate(5.0, 4.0);
+/// let c2 = Coordinate(4.0, 5.0);
+/// assert!( ApproxEq::approx_eq(&c1, &c1, Precision::DEFAULT) );
+/// assert!( !ApproxEq::approx_eq(&c1, &c2, Precision::DEFAULT) );
+/// ```
+///
+/// Two instances of a unit struct are always approx_eq.
+///
+/// ## Enums
+///
+/// Two instances of an enum are approx_eq if they are the same variant, and the data they contain is approx_eq.
+///
+/// Unit variants of an enum are always approx_eq.
+///
+/// ```
+/// #[derive(Debug, ApproxEq)]
+/// enum Foo {
+///     Bar1{data: f32},
+///     Bar2(f32),
+///     Bar3,
+/// }
+///
+/// assert!(ApproxEq::approx_eq(&Foo::Bar1{data: 5.0}, &Foo::Bar1{data: 5.0}, Precision::DEFAULT));
+/// assert!(ApproxEq::approx_eq(&Foo::Bar2(5.0), &Foo::Bar2(5.0), Precision::DEFAULT));
+/// assert!(ApproxEq::approx_eq(&Foo::Bar3, &Foo::Bar3, Precision::DEFAULT));
+/// assert!(!ApproxEq::approx_eq(&Foo::Bar1{data: 5.0}, &Foo::Bar2(5.0), Precision::DEFAULT));
+/// ```
+///
+/// ## Unions
+///
+/// Not implemented for union types.
+#[proc_macro_derive(ApproxEq)]
+pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        ident,
+        data,
+        generics,
+        ..
+    } = parse_macro_input!(input);
+    let impl_block = get_impl_block(&ident, &generics);
+    match data {
+        Data::Struct(data_struct) => match data_struct.fields {
+            Fields::Named(fields_named) => {
+                let fixed_names = fields_named.named.iter().map(|f| f.ident.as_ref().unwrap());
+                quote! {
+                    #impl_block {
+                        fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
+                            true #(&& ApproxEq::approx_eq(&self.#fixed_names, &other.#fixed_names, prec))*
+                        }
+                    }
+                }
+                .into()
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                let i = (0..fields_unnamed.unnamed.len()).map(syn::Index::from);
+                quote! {
+                    #impl_block {
+                        fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
+                            true #(&& ApproxEq::approx_eq(&self.#i, &other.#i, prec))*
+                        }
+                    }
+                }
+                .into()
+            }
+            Fields::Unit => quote! {
+                #impl_block {
+                    fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
+                        true
+                    }
+                }
+            }
+            .into(),
+        },
+        Data::Enum(data_enum) => {
+            let match_inner = data_enum.variants.iter().map(|x| get_variant_match(x));
+            quote! {
+                #impl_block {
+                    fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
+                        match (self, other) {
+                            #(#match_inner,)*
+                            _ => false,
+                        }
+                    }
+                }
+            }
+            .into()
+        }
+        Data::Union(_) => Error::new(
+            Span::call_site().into(),
+            "derive(ApproxEq) is not implemented for union types.",
+        )
+        .into_compile_error()
+        .into(),
+    }
+}
+
+/// Derives the ApproxEqZero trait.
+///
+/// Can be used on structs, but not enums or unions.
+///
+/// ## Structs
+///
+/// An instance of a struct is approx_eq_zero if all of its fields are approx_eq_zero.
+///
+/// Structs with no fields are always approx_eq_zero.
+///
+/// ```
+/// #[derive(Debug, ApproxEqZero)]
+/// struct Coordinate {
+///     x: f32,
+///     y: f32,
+/// }
+/// let c1 = Coordinate{x: 0.0, y: 4.0};
+/// let c2 = Coordinate{x: 0.0, y: 0.0};
+/// assert!( !ApproxEqZero::approx_eq_zero(&c1, Precision::DEFAULT) );
+/// assert!( ApproxEqZero::approx_eq_zero(&c2, Precision::DEFAULT) );
+/// ```
+///
+/// Structs with unnamed fields are also supported and work exactly the same as structs with named fields.
+#[proc_macro_derive(ApproxEqZero)]
+pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        ident,
+        data,
+        generics,
+        ..
+    } = parse_macro_input!(input);
+    let impl_block = get_impl_block_zero(&ident, &generics);
+    match data {
+        Data::Struct(data_struct) => match data_struct.fields {
+            Fields::Named(fields_named) => {
+                let fixed_names = fields_named.named.iter().map(|f| f.ident.as_ref().unwrap());
+                quote! {
+                    #impl_block {
+                        fn approx_eq_zero(&self, prec: Precision) -> bool {
+                            true #(&& ApproxEqZero::approx_eq_zero(&self.#fixed_names, prec))*
+                        }
+                    }
+                }
+                .into()
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                let i = (0..fields_unnamed.unnamed.len()).map(syn::Index::from);
+                quote! {
+                    #impl_block {
+                        fn approx_eq_zero(&self, prec: Precision) -> bool {
+                            true #(&& ApproxEqZero::approx_eq_zero(&self.#i, prec))*
+                        }
+                    }
+                }
+                .into()
+            }
+            Fields::Unit => quote! {
+                #impl_block {
+                    fn approx_eq_zero(&self, prec: Precision) -> bool {
+                        true
+                    }
+                }
+            }
+            .into(),
+        },
+        Data::Enum(_) => Error::new(
+            Span::call_site().into(),
+            "derive(ApproxEqZero) is not implemented for enum types.",
+        )
+        .into_compile_error()
+        .into(),
+        Data::Union(_) => Error::new(
+            Span::call_site().into(),
+            "derive(ApproxEqZero) is not implemented for union types.",
+        )
+        .into_compile_error()
+        .into(),
+    }
+}
