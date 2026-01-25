@@ -1,9 +1,9 @@
 #![allow(missing_docs)]
 
-use proc_macro::TokenStream;
+use proc_macro::{Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
 use syn::{
-    Data, DeriveInput, Fields, GenericParam, Generics, Ident, TypeParam, Variant, parse_macro_input,
+    Data, DeriveInput, Error, Fields, GenericParam, Generics, Ident, Variant, parse_macro_input,
 };
 
 fn get_impl_block(ident: &Ident, generics: &Generics) -> impl ToTokens {
@@ -55,7 +55,61 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
         Fields::Unit => quote! {(Self::#ident, Self::#ident) => true},
     }
 }
-
+/// Derives the ApproxEq trait.
+///
+/// Can be used on structs and enums of any kind.
+///
+/// Two instances of a struct are approx_eq if all of their fields are approx_eq
+///
+/// ```
+/// #[derive(Debug, ApproxEq)]
+/// struct Coordinate {
+///     x: f32,
+///     y: f32,
+/// }
+/// let c1 = Coordinate{x: 5.0, y: 4.0};
+/// let c2 = Coordinate{x: 4.0, y: 5.0};
+/// assert!( ApproxEq::approx_eq(&c1, &c1, Precision::DEFAULT) );
+/// assert!( !ApproxEq::approx_eq(&c1, &c2, Precision::DEFAULT) );
+/// ```
+///
+/// Note that in this example, the ApproxEq implementation uses the taxi-cab metric instead of the standard euclidian metric.
+///
+/// When used on a struct with unnamed fields, the same behavior holds -- the fields will be compared by index.
+///
+/// ```
+/// #[derive(Debug, ApproxEq)]
+/// struct Coordinate(f32, f32);
+///
+/// let c1 = Coordinate(5.0, 4.0);
+/// let c2 = Coordinate(4.0, 5.0);
+/// assert!( ApproxEq::approx_eq(&c1, &c1, Precision::DEFAULT) );
+/// assert!( !ApproxEq::approx_eq(&c1, &c2, Precision::DEFAULT) );
+/// ```
+///
+/// Two instances of a unit struct are always approx_eq.
+///
+/// Two instances of an enum are approx_eq if they are the same variant, and the data they contain is approx_eq.
+///
+/// Unit variants of an enum are always approx_eq.
+///
+/// ```
+/// #[derive(Debug, ApproxEq)]
+/// enum Foo {
+///     Bar1{data: f32},
+///     Bar2(f32),
+///     Bar3,
+/// }
+///
+/// assert!(ApproxEq::approx_eq(&Foo::Bar1{data: 5.0}, &Foo::Bar1{data: 5.0}, Precision::DEFAULT));
+/// assert!(ApproxEq::approx_eq(&Foo::Bar2(5.0), &Foo::Bar2(5.0), Precision::DEFAULT));
+/// assert!(ApproxEq::approx_eq(&Foo::Bar3, &Foo::Bar3, Precision::DEFAULT));
+/// assert!(!ApproxEq::approx_eq(&Foo::Bar1{data: 5.0}, &Foo::Bar2(5.0), Precision::DEFAULT));
+///
+///
+/// ```
+///
+/// Not implemented for union types.
 #[proc_macro_derive(ApproxEq)]
 pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
     let DeriveInput {
@@ -112,9 +166,32 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
             }
             .into()
         }
-        Data::Union(_) => panic!("derive(ApproxEq) is not implemented for union types!"),
+        Data::Union(_) => Error::new(
+            Span::call_site().into(),
+            "derive(ApproxEq) is not implemented for union types.",
+        )
+        .into_compile_error()
+        .into(),
     }
 }
+
+/// Derives the ApproxEqZero trait.
+///
+/// Can be used on structs, but not enums or unions.
+///
+/// An instance of a struct is approx_eq_zero if all of its fields are approx_eq_zero.
+///
+/// ```
+/// #[derive(Debug, ApproxEqZero)]
+/// struct Coordinate {
+///     x: f32,
+///     y: f32,
+/// }
+/// let c1 = Coordinate{x: 0.0, y: 4.0};
+/// let c2 = Coordinate{x: 0.0, y: 0.0};
+/// assert!( !ApproxEqZero::approx_eq_zero(&c1, Precision::DEFAULT) );
+/// assert!( ApproxEqZero::approx_eq_zero(&c2, Precision::DEFAULT) );
+/// ```
 
 #[proc_macro_derive(ApproxEqZero)]
 pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
@@ -158,7 +235,17 @@ pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
             }
             .into(),
         },
-        Data::Enum(_) => panic!("derive(ApproxEqZero) is not implemented for enum types."),
-        Data::Union(_) => panic!("derive(ApproxEqZero) is not implemented for union types."),
+        Data::Enum(_) => Error::new(
+            Span::call_site().into(),
+            "derive(ApproxEqZero) is not implemented for enum types.",
+        )
+        .into_compile_error()
+        .into(),
+        Data::Union(_) => Error::new(
+            Span::call_site().into(),
+            "derive(ApproxEqZero) is not implemented for union types.",
+        )
+        .into_compile_error()
+        .into(),
     }
 }
