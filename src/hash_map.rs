@@ -3,13 +3,20 @@
 use std::collections::{HashMap, hash_map};
 use std::fmt;
 use std::hash::{BuildHasher, BuildHasherDefault, Hasher, RandomState};
+use std::iter::FusedIterator;
 
 use smallvec::{SmallVec, smallvec};
 
 use crate::{ApproxHash, FloatPool, Precision};
 
+type IterInner<'a, K, V> = std::iter::Flatten<hash_map::Values<'a, u64, LinearApproxMap<K, V>>>;
+type IterMutInner<'a, K, V> =
+    std::iter::Flatten<hash_map::ValuesMut<'a, u64, LinearApproxMap<K, V>>>;
+type IntoIterInner<K, V> = std::iter::Flatten<hash_map::IntoValues<u64, LinearApproxMap<K, V>>>;
+
 #[derive(Debug, Default, Copy, Clone)]
 struct TrivialHasher(u64);
+
 impl Hasher for TrivialHasher {
     fn finish(&self) -> u64 {
         self.0
@@ -63,36 +70,58 @@ impl<K, V, S> ApproxHashMap<K, V, S> {
         }
     }
 
+    /// Returns an iterator of all the entries in the map.
+    pub fn iter(&self) -> Iter<'_, K, V> {
+        Iter {
+            len: self.len,
+            inner: self.map.values().flatten().map(|(k, v)| (k, v)),
+        }
+    }
+    /// Returns an iterator of mutable references to all the entries in the map.
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+        IterMut {
+            len: self.len,
+            inner: self.map.values_mut().flatten().map(|(k, v)| (k, v)),
+        }
+    }
+
     /// Returns an iterator of all the keys in the map.
-    pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.iter().map(|(k, _v)| k)
+    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
+        Keys {
+            len: self.len,
+            inner: self.map.values().flatten().map(|(_k, v)| v),
+        }
     }
     /// Converts the map into an iterator of all its keys.
-    pub fn into_keys(self) -> impl Iterator<Item = K> {
-        self.into_iter().map(|(k, _v)| k)
+    pub fn into_keys(self) -> IntoKeys<K, V> {
+        IntoKeys {
+            len: self.len,
+            inner: self.map.into_values().flatten().map(|(k, _v)| k),
+        }
     }
 
     /// Returns an iterator of all the values in the map.
-    pub fn values(&self) -> impl Iterator<Item = &V> {
-        self.iter().map(|(_k, v)| v)
+    pub fn values(&self) -> Values<'_, K, V> {
+        Values {
+            len: self.len,
+            inner: self.map.values().flatten().map(|(_k, v)| v),
+        }
     }
     /// Returns an iterator of mutable references to all the values in the map.
-    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
-        self.iter_mut().map(|(_k, v)| v)
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
+        ValuesMut {
+            len: self.len,
+            inner: self.map.values_mut().flatten().map(|(_k, v)| v),
+        }
     }
     /// Converts the map into an iterator of all its values.
-    pub fn into_values(self) -> impl Iterator<Item = V> {
-        self.into_iter().map(|(_k, v)| v)
+    pub fn into_values(self) -> IntoValues<K, V> {
+        IntoValues {
+            len: self.len,
+            inner: self.map.into_values().flatten().map(|(_k, v)| v),
+        }
     }
 
-    /// Returns an iterator of all the entries in the map.
-    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
-        self.map.values().flatten()
-    }
-    /// Returns an iterator of mutable references to all the entries in the map.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut V)> {
-        self.map.values_mut().flatten()
-    }
     /// Converts the map into an iterator of all the entries in the map.
     pub fn into_iter(self) -> impl Iterator<Item = (K, V)> {
         self.map.into_values().flatten()
@@ -309,6 +338,125 @@ where
         hash
     }
 }
+impl<K, V, S> IntoIterator for ApproxHashMap<K, V, S> {
+    type Item = (K, V);
+
+    type IntoIter = IntoIter<K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            len: self.len,
+            inner: self.map.into_values().flatten().map(|kv| kv),
+        }
+    }
+}
+impl<'a, K, V, S> IntoIterator for &'a ApproxHashMap<K, V, S> {
+    type Item = (&'a K, &'a V);
+
+    type IntoIter = Iter<'a, K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+impl<'a, K, V, S> IntoIterator for &'a mut ApproxHashMap<K, V, S> {
+    type Item = (&'a K, &'a mut V);
+
+    type IntoIter = IterMut<'a, K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
+macro_rules! iterator_structs {
+    (
+        $(
+            $(#[$attr:meta])*
+            $visibility:vis struct $struct_name:ident<
+                $($lt:lifetime,)?
+                $K:ident,
+                $V:ident
+            >($inner_type:ty) -> $output_type:ty;
+        )*
+    ) => {
+        $(
+            $(#[$attr])*
+            #[derive(Debug)]
+            $visibility struct $struct_name<$($lt,)? $K, $V> {
+                len: usize,
+                inner: std::iter::Map<
+                    $inner_type,
+                    fn(<$inner_type as Iterator>::Item) -> $output_type,
+                >,
+            }
+            impl<$($lt,)? $K, $V> Default for $struct_name<$($lt,)? $K, $V> {
+                fn default() -> Self {
+                    Self {
+                        inner: <$inner_type>::default().map(|_| unreachable!()),
+                        len: 0,
+                    }
+                }
+            }
+            impl<$($lt,)? $K, $V> ExactSizeIterator for $struct_name<$($lt,)? $K, $V> {
+                fn len(&self) -> usize {
+                    self.len
+                }
+            }
+            impl<$($lt,)? $K, $V> FusedIterator for $struct_name<$($lt,)? $K, $V> {}
+            impl<$($lt,)? $K, $V> Iterator for $struct_name<$($lt,)? $K, $V> {
+                type Item = $output_type;
+
+                fn next(&mut self) -> Option<Self::Item> {
+                    self.len = self.len.saturating_sub(1);
+                    self.inner.next()
+                }
+            }
+        )*
+    };
+}
+
+macro_rules! impl_clone_for_iterator_structs {
+    ($($type:ident),* $(,)?) => {
+        $(
+            impl<'a, K, V> Clone for $type<'a, K, V> {
+                fn clone(&self) -> Self {
+                    Self {
+                        len: self.len,
+                        inner: self.inner.clone(),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+iterator_structs! {
+    /// An owning iterator over the entries of an `ApproxHashMap`.
+    pub struct IntoIter<K, V>(IntoIterInner<K, V>) -> (K, V);
+
+    /// An owning iterator over the keys of an `ApproxHashMap`.
+    pub struct IntoKeys<K, V>(IntoIterInner<K, V>) -> K;
+
+    /// An owning iterator over the values of an `ApproxHashMap`.
+    pub struct IntoValues<K, V>(IntoIterInner<K, V>) -> V;
+
+    /// An iterator over the entries of an `ApproxHashMap`.
+    pub struct Iter<'a, K, V>(IterInner<'a, K, V>) -> (&'a K, &'a V);
+
+    /// A mutable iterator over the entries of an `ApproxHashMap`.
+    pub struct IterMut<'a, K, V>(IterMutInner<'a ,K, V>) -> (&'a K, &'a mut V);
+
+    /// An iterator over the keys of an `ApproxHashMap`.
+    pub struct Keys<'a, K, V>(IterInner<'a, K, V>) -> &'a V;
+
+    /// An iterator over the values of an `ApproxHashMap`.
+    pub struct Values<'a, K, V>(IterInner<'a, K, V>) -> &'a V;
+
+    /// A mutable iterator over the values of an `ApproxHashMap`.
+    pub struct ValuesMut<'a, K, V>(IterMutInner<'a, K, V>) -> &'a mut V;
+}
+impl_clone_for_iterator_structs!(Iter, Keys, Values);
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
 ///
@@ -321,6 +469,7 @@ pub enum Entry<'a, K, V> {
     /// A vacant entry.
     Vacant(VacantEntry<'a, K, V>),
 }
+
 impl<'a, K, V> Entry<'a, K, V> {
     /// Ensures a value is in the entry by inserting the default if empty, and
     /// returns a mutable reference to the value in the entry.
@@ -417,6 +566,7 @@ pub struct OccupiedEntry<'a, K, V> {
     index: usize,
     len: &'a mut usize,
 }
+
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the key in the entry.
     pub fn key(&self) -> &K {
@@ -476,6 +626,7 @@ pub struct VacantEntry<'a, K, V> {
     key: K,
     len: &'a mut usize,
 }
+
 impl<'a, K, V> VacantEntry<'a, K, V> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
@@ -532,11 +683,13 @@ where
 
 #[derive(Debug, Clone)]
 struct LinearApproxMap<K, V>(SmallVec<[(K, V); 1]>);
+
 impl<K, V> Default for LinearApproxMap<K, V> {
     fn default() -> Self {
         Self(SmallVec::new())
     }
 }
+
 impl<K, V> LinearApproxMap<K, V> {
     fn new_with_single_entry(key: K, value: V) -> Self {
         Self(smallvec![(key, value)])
@@ -552,11 +705,13 @@ impl<K, V> LinearApproxMap<K, V> {
         self.0.into_iter().next().expect(msg)
     }
 }
+
 impl<K: ApproxHash, V> LinearApproxMap<K, V> {
     fn index_of(&self, key: &K) -> Option<usize> {
         self.0.iter().position(|(k, _)| k.interned_eq(key))
     }
 }
+
 impl<K, V> LinearApproxMap<K, V> {
     fn key_value(&self, index: usize) -> &(K, V) {
         &self.0[index]
@@ -582,6 +737,7 @@ impl<K, V> LinearApproxMap<K, V> {
         i
     }
 }
+
 impl<K, V> IntoIterator for LinearApproxMap<K, V> {
     type Item = (K, V);
 
@@ -591,6 +747,7 @@ impl<K, V> IntoIterator for LinearApproxMap<K, V> {
         self.0.into_iter()
     }
 }
+
 impl<'a, K, V> IntoIterator for &'a LinearApproxMap<K, V> {
     type Item = (&'a K, &'a V);
 
@@ -600,6 +757,7 @@ impl<'a, K, V> IntoIterator for &'a LinearApproxMap<K, V> {
         self.0.iter().map(|(k, v)| (k, v))
     }
 }
+
 impl<'a, K, V> IntoIterator for &'a mut LinearApproxMap<K, V> {
     type Item = (&'a K, &'a mut V);
 

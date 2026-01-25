@@ -37,6 +37,6 @@ pub mod precision;
 pub mod traits;
 
 pub use hash_map::ApproxHashMap;
-pub use pool::{FloatPool, FloatPoolIter};
+pub use pool::FloatPool;
 pub use precision::Precision;
 pub use traits::*;

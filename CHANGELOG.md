@@ -9,9 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `FloatPool::len()`
+- `FloatPool::bucket_count()`
 - `FloatPool::iter()`
+- `impl IntoIterator for FloatPool`
 - `impl IntoIterator for &FloatPool`
+- `impl IntoIterator for AppoxHashMap`
+- `impl IntoIterator for &AppoxHashMap`
+- `impl IntoIterator for &mut AppoxHashMap`
+- Structs for `ApproxHashMap` iteration methods
 
 ## [3.1.0]
 

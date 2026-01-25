@@ -1,6 +1,7 @@
 //! Interner that canonicalizes similar floats.
 
-use std::{collections::hash_map, fmt};
+use std::fmt;
+use std::{collections::hash_map, iter::FusedIterator};
 
 use crate::{ApproxHash, Precision};
 
@@ -131,43 +132,87 @@ impl FloatPool {
     }
 
     /// Returns the number of occupied buckets in the pool.
-    pub fn len(&self) -> usize {
+    pub fn bucket_count(&self) -> usize {
         self.floats.len()
     }
 
     /// Iterates over all floats in the pool, in an undefined order.
-    pub fn iter(&self) -> FloatPoolIter<'_> {
-        FloatPoolIter {
-            pool: self,
-            hash_map_iter: self.floats.iter(),
-        }
+    pub fn iter(&self) -> Iter<'_> {
+        Iter(FloatIterInner {
+            prec: self.prec,
+            inner: self.floats.iter().map(|(&k, &v)| (k, v)),
+        })
+    }
+}
+
+impl IntoIterator for FloatPool {
+    type Item = f64;
+
+    type IntoIter = IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter(FloatIterInner {
+            prec: self.prec,
+            inner: self.floats.into_iter(),
+        })
     }
 }
 
 impl<'a> IntoIterator for &'a FloatPool {
     type Item = f64;
 
-    type IntoIter = FloatPoolIter<'a>;
+    type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-/// Iterator over floats in a [`FloatPool`].
-pub struct FloatPoolIter<'a> {
-    pool: &'a FloatPool,
-    hash_map_iter: hash_map::Iter<'a, u64, f64>,
+#[derive(Debug)]
+struct FloatIterInner<I> {
+    prec: Precision,
+    inner: I,
 }
-impl Iterator for FloatPoolIter<'_> {
+
+impl<I: Iterator<Item = (u64, f64)>> FloatIterInner<I> {
+    fn next(&mut self) -> Option<f64> {
+        self.inner
+            .find(|&(k, v)| self.prec.bucket(v) == k)
+            .map(|(_k, v)| v)
+    }
+}
+
+/// Owning iterator over floats in a [`FloatPool`].
+#[derive(Debug)]
+pub struct IntoIter(FloatIterInner<hash_map::IntoIter<u64, f64>>);
+
+impl Iterator for IntoIter {
     type Item = f64;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.hash_map_iter
-            .find(|&(&k, &v)| self.pool.prec.bucket(v) == k)
-            .map(|(_k, &v)| v)
+        self.0.next()
     }
 }
+
+impl FusedIterator for IntoIter {}
+
+/// Iterator over floats in a [`FloatPool`].
+#[derive(Debug)]
+pub struct Iter<'a>(
+    FloatIterInner<
+        std::iter::Map<hash_map::Iter<'a, u64, f64>, fn((&'a u64, &'a f64)) -> (u64, f64)>,
+    >,
+);
+
+impl Iterator for Iter<'_> {
+    type Item = f64;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+impl FusedIterator for Iter<'_> {}
 
 #[cfg(test)]
 mod tests {
