@@ -1,7 +1,8 @@
 //! Interner that canonicalizes similar floats.
 
+use std::collections::hash_map;
 use std::fmt;
-use std::{collections::hash_map, iter::FusedIterator};
+use std::iter::FusedIterator;
 
 use crate::{ApproxHash, Precision};
 

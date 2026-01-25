@@ -1,9 +1,7 @@
 //! Common traits related to approximate equality.
 
-use std::{
-    cmp::Ordering,
-    hash::{Hash, Hasher},
-};
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 
 use crate::Precision;
 
