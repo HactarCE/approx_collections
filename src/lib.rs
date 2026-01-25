@@ -28,8 +28,6 @@
 //!
 //! The `rustc-hash` feature is enabled by default, and uses a faster hashing
 //! algorithm for the hash map inside [`FloatPool`].
-#[cfg(test)]
-pub mod derive_tests;
 
 pub mod hash_map;
 pub mod pool;
@@ -40,3 +38,7 @@ pub use hash_map::ApproxHashMap;
 pub use pool::FloatPool;
 pub use precision::Precision;
 pub use traits::*;
+
+#[cfg(feature = "derive")]
+#[cfg(test)]
+pub mod derive_tests;

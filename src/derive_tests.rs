@@ -1,10 +1,12 @@
 #![allow(dead_code)]
-// A lot of the structs/enums in here are not used in any test, but rather are included to test the proc macro to make sure the code it generates
-// doesn't throw any errors. Thus I allow dead code.
-use crate::{ApproxEqZero, traits::ApproxEq};
-use approx_eq_derive::{ApproxEq, ApproxEqZero};
+// A lot of the structs/enums in here are not used in any test, but rather are
+// included to test the proc macro to make sure the code it generates doesn't
+// throw any errors. Thus I allow dead code.
 
 use crate::Precision;
+use crate::{ApproxEqZero, traits::ApproxEq};
+
+use approx_collections_derive::{ApproxEq, ApproxEqZero};
 
 #[derive(Debug, ApproxEq, ApproxEqZero)]
 pub struct Coordinate {

@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `impl IntoIterator for &AppoxHashMap`
 - `impl IntoIterator for &mut AppoxHashMap`
 - Structs for `ApproxHashMap` iteration methods
+- Macros for `#[derive(ApproxEq, ApproxEqZero)]` with feature `derive`
 
 ## [3.1.0]
 
