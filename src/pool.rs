@@ -196,13 +196,12 @@ impl Iterator for IntoIter {
 
 impl FusedIterator for IntoIter {}
 
+type CopiedHashMapIter<'a> =
+    std::iter::Map<hash_map::Iter<'a, u64, f64>, fn((&'a u64, &'a f64)) -> (u64, f64)>;
+
 /// Iterator over floats in a [`FloatPool`].
 #[derive(Debug)]
-pub struct Iter<'a>(
-    FloatIterInner<
-        std::iter::Map<hash_map::Iter<'a, u64, f64>, fn((&'a u64, &'a f64)) -> (u64, f64)>,
-    >,
-);
+pub struct Iter<'a>(FloatIterInner<CopiedHashMapIter<'a>>);
 
 impl Iterator for Iter<'_> {
     type Item = f64;

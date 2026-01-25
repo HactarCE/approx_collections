@@ -306,7 +306,7 @@ impl ApproxHash for f32 {
 }
 impl<T: ApproxHash> ApproxHash for [T] {
     fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        self.into_iter().for_each(|x| x.intern_floats(f));
+        self.iter_mut().for_each(|x| x.intern_floats(f));
     }
 
     fn interned_eq(&self, other: &Self) -> bool {

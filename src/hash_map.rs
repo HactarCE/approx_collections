@@ -122,11 +122,6 @@ impl<K, V, S> ApproxHashMap<K, V, S> {
         }
     }
 
-    /// Converts the map into an iterator of all the entries in the map.
-    pub fn into_iter(self) -> impl Iterator<Item = (K, V)> {
-        self.map.into_values().flatten()
-    }
-
     /// Returns the number of entries in the map.
     pub fn len(&self) -> usize {
         self.len
@@ -281,7 +276,7 @@ where
     pub fn get_mut_with_mut_key(&mut self, key: &mut K) -> Option<&mut V> {
         let hash = self.intern_and_hash(key);
         let linear_map = self.map.get_mut(&hash)?;
-        let index = linear_map.index_of(&key)?;
+        let index = linear_map.index_of(key)?;
         Some(linear_map.value_mut(index))
     }
     /// Inserts an entry into the map and returns the old value, if any.
@@ -334,8 +329,7 @@ where
         self.pool.intern_in_place(key);
         let mut h = self.hash_builder.build_hasher();
         key.interned_hash(&mut h);
-        let hash = h.finish();
-        hash
+        h.finish()
     }
 }
 impl<K, V, S> IntoIterator for ApproxHashMap<K, V, S> {
@@ -346,6 +340,7 @@ impl<K, V, S> IntoIterator for ApproxHashMap<K, V, S> {
     fn into_iter(self) -> Self::IntoIter {
         IntoIter {
             len: self.len,
+            #[allow(clippy::map_identity)] // needed for full generality of the macro
             inner: self.map.into_values().flatten().map(|kv| kv),
         }
     }

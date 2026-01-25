@@ -36,7 +36,10 @@ fn get_variant_match(variant: &Variant) -> impl ToTokens {
     let ident = &variant.ident;
     match &variant.fields {
         Fields::Named(fields_named) => {
-            let fixed_names = fields_named.named.iter().map(|f| f.ident.as_ref().unwrap());
+            let fixed_names = fields_named
+                .named
+                .iter()
+                .map(|f| f.ident.as_ref().expect("no field name"));
             let self_names = fixed_names.clone().map(|x| format_ident!("slf_{}", x));
             let other_names = fixed_names.clone().map(|x| format_ident!("other_{}", x));
             let self_names2 = self_names.clone();
@@ -127,7 +130,10 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
     match data {
         Data::Struct(data_struct) => match data_struct.fields {
             Fields::Named(fields_named) => {
-                let fixed_names = fields_named.named.iter().map(|f| f.ident.as_ref().unwrap());
+                let fixed_names = fields_named
+                    .named
+                    .iter()
+                    .map(|f| f.ident.as_ref().expect("no field name"));
                 quote! {
                     #impl_block {
                         fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
@@ -158,7 +164,7 @@ pub fn derive_approx_eq(input: TokenStream) -> TokenStream {
             .into(),
         },
         Data::Enum(data_enum) => {
-            let match_inner = data_enum.variants.iter().map(|x| get_variant_match(x));
+            let match_inner = data_enum.variants.iter().map(get_variant_match);
             quote! {
                 #impl_block {
                     fn approx_eq(&self, other: &Self, prec: Precision) -> bool {
@@ -215,7 +221,10 @@ pub fn derive_approx_eq_zero(input: TokenStream) -> TokenStream {
     match data {
         Data::Struct(data_struct) => match data_struct.fields {
             Fields::Named(fields_named) => {
-                let fixed_names = fields_named.named.iter().map(|f| f.ident.as_ref().unwrap());
+                let fixed_names = fields_named
+                    .named
+                    .iter()
+                    .map(|f| f.ident.as_ref().expect("no field name"));
                 quote! {
                     #impl_block {
                         fn approx_eq_zero(&self, prec: Precision) -> bool {

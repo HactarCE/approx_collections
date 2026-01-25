@@ -1,7 +1,14 @@
 [package]
 name = "approx_collections_derive"
-version = "0.1.0"
+description = "Derive macros for approx_collections"
+version = "1.0.0"
+authors = ["Andrew Farkas", "Henry Duke Pickle"]
 edition = "2024"
+repository = "https://github.com/HactarCE/approx_collections/"
+rust-version = "1.88.0"
+keywords = ["math", "equality", "approximate", "float", "comparison"]
+categories = ["data-structures", "mathematics"]
+license = "MIT OR Apache-2.0"
 
 [lib]
 proc-macro = true
