@@ -4,7 +4,7 @@ use std::collections::hash_map;
 use std::fmt;
 use std::iter::FusedIterator;
 
-use crate::{ApproxHash, Precision};
+use crate::{ApproxInternable, Precision};
 
 #[cfg(feature = "rustc-hash")]
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
@@ -72,7 +72,7 @@ impl FloatPool {
     /// If any floats in `value` are have not already been interned, they are
     /// added to the pool and unmodified.
     #[must_use = "intern() returns a mutated copy"]
-    pub fn intern<V: ApproxHash>(&mut self, mut value: V) -> V {
+    pub fn intern<V: ApproxInternable>(&mut self, mut value: V) -> V {
         self.intern_in_place(&mut value);
         value
     }
@@ -81,7 +81,7 @@ impl FloatPool {
     ///
     /// If any floats in `value` are have not already been interned, they are
     /// added to the pool and unmodified.
-    pub fn intern_in_place<V: ApproxHash>(&mut self, value: &mut V) {
+    pub fn intern_in_place<V: ApproxInternable>(&mut self, value: &mut V) {
         value.intern_floats(&mut |x| *x = self.insert(*x).0);
     }
 
@@ -89,7 +89,7 @@ impl FloatPool {
     /// equal, returning a mutated copy of `value`. Returns `None` if any floats
     /// in `value` are not already in the pool.
     #[must_use = "try_intern() returns a mutated copy"]
-    pub fn try_intern<V: ApproxHash>(&self, mut value: V) -> Option<V> {
+    pub fn try_intern<V: ApproxInternable>(&self, mut value: V) -> Option<V> {
         let mut failed = false;
         value.intern_floats(&mut |x| {
             if !failed {

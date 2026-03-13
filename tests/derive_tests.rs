@@ -1,10 +1,11 @@
 #![allow(dead_code)]
+#![allow(unused)]
 
 // A lot of the structs/enums in here are not used in any test, but rather are
 // included to test the proc macro to make sure the code it generates doesn't
 // throw any errors. Thus I allow dead code.
 
-use approx_collections::{ApproxEq, ApproxEqZero, Precision};
+use approx_collections::{ApproxEq, ApproxEqZero, ApproxInternable, FloatPool, Precision};
 
 fn main() {}
 
@@ -31,6 +32,11 @@ where
 struct Wrapper2<'a, 'b: 'a, T: ApproxEq + ApproxEqZero, const N: usize> {
     data: &'a [T; N],
     data2: &'b T,
+}
+#[derive(ApproxInternable)]
+struct WrapperIntern<'a, 'b: 'a, T: ApproxInternable, const N: usize> {
+    data: &'a mut [T; N],
+    data2: &'b mut T,
 }
 
 #[derive(Debug, ApproxEq)]
@@ -75,6 +81,47 @@ where
 enum Test {
     One(f64, f64),
     Two { x: f64, y: f64 },
+}
+#[derive(ApproxInternable)]
+struct InternTest {
+    x: f64,
+    #[approx_internable_non_float]
+    y: u64,
+}
+
+#[derive(ApproxInternable)]
+struct UnnamedInternTest(f64, #[approx_internable_non_float] u64);
+
+#[derive(ApproxInternable)]
+enum InternTestEnum {
+    First,
+    Second(f32, #[approx_internable_non_float] usize),
+    Third {
+        x: f32,
+        #[approx_internable_non_float]
+        _y: usize,
+    },
+}
+
+#[derive(ApproxInternable)]
+struct Foo2 {
+    bar1: f64,
+    #[approx_internable_non_float]
+    bar2: u64,
+}
+
+#[derive(ApproxInternable)]
+struct Foo3(f64, #[approx_internable_non_float] u64);
+
+#[derive(ApproxInternable)]
+enum Foo4 {
+    Bar1,
+    Bar2(#[approx_internable_non_float] u64, f64),
+    Bar3 {
+        x: f64,
+        #[approx_internable_non_float]
+        y: u64,
+    },
 }
 
 ///examples for both ApproxEq and ApproxEqZero, exactly as in the docs for the proc macros.
@@ -149,4 +196,24 @@ fn test_complicated() {
     assert!(w1.approx_eq(&w2, rough));
     assert!(!w3.approx_eq_zero(precise));
     assert!(w3.approx_eq_zero(rough));
+}
+
+#[test]
+///test the interning. the 13 at the end comes from the initial bucket at 0.0, followed by 3 buckets per interned float (4 interned floats, since 'three' doesn't contain a float).
+fn test_intern() {
+    let one = Foo2 {
+        bar1: 16.0,
+        bar2: 5,
+    };
+    let two = Foo3(20.0, 10);
+    let three = Foo4::Bar1;
+    let four = Foo4::Bar2(55, 62.0);
+    let five = Foo4::Bar3 { x: 222.0, y: 22 };
+    let mut pool = FloatPool::default();
+    let _ = pool.intern(one);
+    let _ = pool.intern(two);
+    let _ = pool.intern(three);
+    let _ = pool.intern(four);
+    let _ = pool.intern(five);
+    assert_eq!(pool.bucket_count(), 13)
 }

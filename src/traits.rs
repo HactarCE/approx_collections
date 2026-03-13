@@ -1,7 +1,9 @@
 //! Common traits related to approximate equality.
 
-use std::cmp::Ordering;
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use crate::Precision;
 
@@ -22,9 +24,6 @@ macro_rules! impl_for_tuples {
 
 /// Trait for types that can be approximately compared for equality with each
 /// other.
-///
-/// A derive macro is available with the crate feature `derive`. See
-/// [`approx_collections_derive::ApproxEq`].
 pub trait ApproxEq: std::fmt::Debug {
     /// Returns whether `self` and `other` are approximately equal according to
     /// the precision.
@@ -86,9 +85,6 @@ macro_rules! impl_approx_eq_for_tuple {
 impl_for_tuples!(impl_approx_eq_for_tuple);
 
 /// Trait for types that can be approximately compared to some zero value.
-///
-/// A derive macro is available with the crate feature `derive`. See
-/// [`approx_collections_derive::ApproxEqZero`].
 pub trait ApproxEqZero {
     /// Returns whether `self` is approximately zero according to the precision.
     ///
@@ -267,11 +263,64 @@ macro_rules! impl_approx_cmp_zero_for_tuple {
 }
 impl_for_tuples!(impl_approx_cmp_zero_for_tuple);
 
-/// Trait for types that can be stored in a [`crate::ApproxHashMap`].
-pub trait ApproxHash {
+///Trait for types that can be interned (component-wise) in a [`crate::FloatPool`].
+pub trait ApproxInternable {
     /// Interns every float in the object by calling `f`.
     fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F);
+}
 
+impl ApproxInternable for f64 {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        f(self)
+    }
+}
+
+impl ApproxInternable for f32 {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        let mut x = *self as f64;
+        f(&mut x);
+        *self = x as f32;
+    }
+}
+
+impl<T: ApproxInternable> ApproxInternable for [T] {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        self.into_iter().for_each(|x| x.intern_floats(f));
+    }
+}
+
+impl<T: ApproxInternable, const N: usize> ApproxInternable for [T; N] {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        <[T]>::intern_floats(self, f);
+    }
+}
+
+impl<T: ApproxInternable> ApproxInternable for Vec<T> {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        <[T]>::intern_floats(self, f);
+    }
+}
+impl<T: ApproxInternable> ApproxInternable for Box<T> {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        T::intern_floats(self, f);
+    }
+}
+
+impl<T: ApproxInternable> ApproxInternable for &mut T {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        T::intern_floats(self, f);
+    }
+}
+
+impl<T: ApproxInternable> ApproxInternable for Option<T> {
+    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
+        if let Some(inner) = self {
+            inner.intern_floats(f);
+        }
+    }
+}
+/// Trait for types that can be stored in a [`crate::ApproxHashMap`].
+pub trait ApproxHash: ApproxInternable {
     /// Returns whether `self` and `other` are exactly equal, assuming both have
     /// already been interned using `intern_floats()`.
     fn interned_eq(&self, other: &Self) -> bool;
@@ -281,10 +330,6 @@ pub trait ApproxHash {
     fn interned_hash<H: Hasher>(&self, state: &mut H);
 }
 impl ApproxHash for f64 {
-    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        f(self)
-    }
-
     fn interned_eq(&self, other: &Self) -> bool {
         self.to_bits() == other.to_bits()
     }
@@ -294,12 +339,6 @@ impl ApproxHash for f64 {
     }
 }
 impl ApproxHash for f32 {
-    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        let mut x = *self as f64;
-        f(&mut x);
-        *self = x as f32;
-    }
-
     fn interned_eq(&self, other: &Self) -> bool {
         self.to_bits() == other.to_bits()
     }
@@ -309,10 +348,6 @@ impl ApproxHash for f32 {
     }
 }
 impl<T: ApproxHash> ApproxHash for [T] {
-    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        self.iter_mut().for_each(|x| x.intern_floats(f));
-    }
-
     fn interned_eq(&self, other: &Self) -> bool {
         self.len() == other.len() && std::iter::zip(self, other).all(|(a, b)| a.interned_eq(b))
     }
@@ -323,10 +358,6 @@ impl<T: ApproxHash> ApproxHash for [T] {
     }
 }
 impl<T: ApproxHash, const N: usize> ApproxHash for [T; N] {
-    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        <[T]>::intern_floats(self, f);
-    }
-
     fn interned_eq(&self, other: &Self) -> bool {
         <[T]>::interned_eq(self, other)
     }
@@ -336,10 +367,6 @@ impl<T: ApproxHash, const N: usize> ApproxHash for [T; N] {
     }
 }
 impl<T: ApproxHash> ApproxHash for Vec<T> {
-    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        <[T]>::intern_floats(self, f);
-    }
-
     fn interned_eq(&self, other: &Self) -> bool {
         <[T]>::interned_eq(self, other)
     }
@@ -349,10 +376,6 @@ impl<T: ApproxHash> ApproxHash for Vec<T> {
     }
 }
 impl<T: ApproxHash> ApproxHash for Box<T> {
-    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        T::intern_floats(self, f);
-    }
-
     fn interned_eq(&self, other: &Self) -> bool {
         T::interned_eq(self, other)
     }
@@ -362,10 +385,6 @@ impl<T: ApproxHash> ApproxHash for Box<T> {
     }
 }
 impl<T: ApproxHash> ApproxHash for &mut T {
-    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        T::intern_floats(self, f);
-    }
-
     fn interned_eq(&self, other: &Self) -> bool {
         T::interned_eq(self, other)
     }
@@ -375,12 +394,6 @@ impl<T: ApproxHash> ApproxHash for &mut T {
     }
 }
 impl<T: ApproxHash> ApproxHash for Option<T> {
-    fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
-        if let Some(inner) = self {
-            inner.intern_floats(f);
-        }
-    }
-
     fn interned_eq(&self, other: &Self) -> bool {
         match (self, other) {
             (None, None) => true,
@@ -396,13 +409,19 @@ impl<T: ApproxHash> ApproxHash for Option<T> {
         }
     }
 }
-macro_rules! impl_approx_hash_for_tuple {
+macro_rules! impl_approx_internable_for_tuple {
     ($($generic_param:ident),+; $($index:tt),+) => {
-        impl<$($generic_param: ApproxHash,)+> ApproxHash for ($($generic_param,)+) {
+        impl<$($generic_param: ApproxInternable,)+> ApproxInternable for ($($generic_param,)+) {
             fn intern_floats<F: FnMut(&mut f64)>(&mut self, f: &mut F) {
                 $(self.$index.intern_floats(f);)+
             }
+        }
+    };
+}
 
+macro_rules! impl_approx_hash_for_tuple {
+    ($($generic_param:ident),+; $($index:tt),+) => {
+        impl<$($generic_param: ApproxHash,)+> ApproxHash for ($($generic_param,)+) {
             fn interned_eq(&self, other: &Self) -> bool {
                 $(self.$index.interned_eq(&other.$index))&&+
             }
@@ -413,4 +432,5 @@ macro_rules! impl_approx_hash_for_tuple {
         }
     };
 }
+impl_for_tuples!(impl_approx_internable_for_tuple);
 impl_for_tuples!(impl_approx_hash_for_tuple);

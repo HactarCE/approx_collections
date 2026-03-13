@@ -2,7 +2,7 @@
 //!
 //! [`Precision`] is the basic struct used by everything in this crate.
 //!
-//! [`FloatPool`] is used for interning floats to reduce accumulated numerical
+//! [`FloatPool`] is used for interning floats via [`ApproxInternable`] to reduce accumulated numerical
 //! error and allow direct comparison and hashing via [`ApproxHash`].
 //!
 //! [`ApproxHashMap`] is used for looking up approximate values.
@@ -30,7 +30,7 @@
 //! algorithm for the hash map inside [`FloatPool`].
 //!
 //! The `derive` feature is enabled by default, and provides derive macros for
-//! [`ApproxEq`] and [`ApproxEqZero`].
+//! [`ApproxEq`], [`ApproxEqZero`], and [`ApproxInternable`].
 
 pub mod hash_map;
 pub mod pool;
@@ -38,7 +38,7 @@ pub mod precision;
 pub mod traits;
 
 #[cfg(feature = "derive")]
-pub use approx_collections_derive::{ApproxEq, ApproxEqZero};
+pub use approx_collections_derive::{ApproxEq, ApproxEqZero, ApproxInternable};
 pub use hash_map::ApproxHashMap;
 pub use pool::FloatPool;
 pub use precision::Precision;

@@ -1,7 +1,7 @@
 [package]
 name = "approx_collections"
 description = "Collections using approximate floating-point comparison"
-version = "3.2.0"
+version = "4.0.0"
 authors = ["Andrew Farkas"]
 edition = "2024"
 repository = "https://github.com/HactarCE/approx_collections/"
@@ -39,7 +39,7 @@ uninlined_format_args = "warn"
 unwrap_used = "warn"
 
 [dependencies]
-approx_collections_derive = { version = "1.0.0", path = "derive", optional = true }
+approx_collections_derive = { version = "1.1.0", path = "derive", optional = true }
 rustc-hash = { version = "2.1.1", optional = true }
 smallvec = { version = "1.13.2", features = ["union"] }
 
