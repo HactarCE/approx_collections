@@ -89,7 +89,7 @@ impl<K, V, S> ApproxHashMap<K, V, S> {
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         Keys {
             len: self.len,
-            inner: self.map.values().flatten().map(|(_k, v)| v),
+            inner: self.map.values().flatten().map(|(k, _v)| k),
         }
     }
     /// Converts the map into an iterator of all its keys.
@@ -443,7 +443,7 @@ iterator_structs! {
     pub struct IterMut<'a, K, V>(IterMutInner<'a ,K, V>) -> (&'a K, &'a mut V);
 
     /// An iterator over the keys of an `ApproxHashMap`.
-    pub struct Keys<'a, K, V>(IterInner<'a, K, V>) -> &'a V;
+    pub struct Keys<'a, K, V>(IterInner<'a, K, V>) -> &'a K;
 
     /// An iterator over the values of an `ApproxHashMap`.
     pub struct Values<'a, K, V>(IterInner<'a, K, V>) -> &'a V;
